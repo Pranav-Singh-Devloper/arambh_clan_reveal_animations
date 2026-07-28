@@ -1,3 +1,28 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "//": [
+    "ORDER MATTERS. Rewrites are evaluated top to bottom, and the SPA catch-all",
+    "below would otherwise swallow /m/1647 and hand back index.html - the React",
+    "app, which has no such route, so every mail page would render as the",
+    "friendly not-found. The /m rule has to come first.",
+    "",
+    "The pattern is pinned to exactly four digits so anything else under /m",
+    "still falls through to the app's own not-found page rather than 404ing raw",
+    "from the CDN.",
+    "",
+    "Static files are matched before rewrites are consulted, so /r/3184 and the",
+    "hashed assets are unaffected by either rule."
+  ],
+  "rewrites": [
+    { "source": "/m/:code(\\d{4})", "destination": "/m/:code.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "//": "Share links, not public content. Keep the mails out of search results.",
+      "source": "/m/(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    }
+  ]
 }

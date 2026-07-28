@@ -29,6 +29,37 @@ CODES = {
     ("team", "chola"): "8524",
 }
 
+# Where each mail is ALSO published as a web page, on the same deployment, so a
+# link can be shared without attaching a file: /m/<code>.
+#
+# A separate table from CODES on purpose. Reusing the reveal code would mean
+# /m/9415 and /r/9415 were the same clan, and anyone who noticed could map one
+# space onto the other. The two sets are disjoint - no value appears in both.
+#
+# (Individual digits do overlap between a mail code and its own reveal code;
+# that is coincidence in a four-digit space and carries no information. The
+# property that matters is that the sets do not intersect.)
+#
+# Opaque in themselves, and a leaked mail URL gives away nothing anyway: the
+# mails never name a clan, which is the whole reason they can be hosted.
+MAIL_CODES = {
+    ("students", "rajputana"): "4071",
+    ("students", "vijaya"): "6238",
+    ("students", "maratha"): "8905",
+    ("students", "chola"): "1647",
+    ("team", "rajputana"): "5312",
+    ("team", "vijaya"): "7486",
+    ("team", "maratha"): "2059",
+    ("team", "chola"): "3728",
+}
+
+# The site's public/ directory is copied verbatim into its build, so writing
+# the mails there is all it takes for them to ship with the deployment. One
+# source of truth: the file you send and the page you link are byte-identical
+# because they are written in the same pass.
+WEB_MAIL_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "clan_reveal_websites", "public", "m")
+
 # All images live at the root of the aarambh_images repo and are already up.
 _IMG = "https://raw.githubusercontent.com/raindeer-sociaI/aarambh_images/refs/heads/main"
 CREST_BASE = _IMG          # crests are <slug>.jpg.jpeg
@@ -562,19 +593,37 @@ def render(cfg, clan_slug, clan_name, link):
 
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
+    os.makedirs(WEB_MAIL_DIR, exist_ok=True)
+
+    # anything stale in public/m would keep being deployed forever
+    for old in os.listdir(WEB_MAIL_DIR):
+        if old.endswith(".html"):
+            os.remove(os.path.join(WEB_MAIL_DIR, old))
+
     built = []
     for cfg in (STUDENT, TEAM):
         for slug, name, _ in CLANS:
-            link = f"{REVEAL_BASE}/r/{CODES[(cfg['audience'], slug)]}"
-            path = os.path.join(here, f"{cfg['audience']}_{slug}.html")
-            with open(path, "w", encoding="utf-8") as fh:
-                fh.write(render(cfg, slug, name, link))
-            built.append((os.path.basename(path), link))
+            audience = cfg["audience"]
+            link = f"{REVEAL_BASE}/r/{CODES[(audience, slug)]}"
+            html = render(cfg, slug, name, link)
 
-    width = max(len(n) for n, _ in built)
-    for name, link in built:
+            path = os.path.join(here, f"{audience}_{slug}.html")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(html)
+
+            code = MAIL_CODES[(audience, slug)]
+            with open(os.path.join(WEB_MAIL_DIR, f"{code}.html"), "w", encoding="utf-8") as fh:
+                fh.write(html)
+
+            built.append((os.path.basename(path), link, f"{REVEAL_BASE}/m/{code}"))
+
+    width = max(len(n) for n, _, _ in built)
+    for name, link, page in built:
         print(f"{name.ljust(width)}  ->  {link}")
     print(f"\n{len(built)} mails written to {here}")
+    print(f"and published as pages in {os.path.normpath(WEB_MAIL_DIR)}:\n")
+    for name, _, page in built:
+        print(f"  {name.ljust(width)}  ->  {page}")
 
 
 if __name__ == "__main__":

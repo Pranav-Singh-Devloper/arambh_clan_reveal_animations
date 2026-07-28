@@ -353,6 +353,52 @@ the visitor left, which is what the browser would do on its own. React Router
 v7 ships `<ScrollRestoration>` for this, but it needs a data router
 (`createBrowserRouter`) and this app uses `BrowserRouter`.
 
+## The mails are hosted too
+
+Every mail also ships as a page on this same deployment, so a link can be
+shared without attaching a file.
+
+| Mail | Page | Reveal link inside |
+|---|---|---|
+| students / Rajputana | `/m/4071` | `/r/3184` |
+| students / Vijaya | `/m/6238` | `/r/5027` |
+| students / Maratha | `/m/8905` | `/r/7362` |
+| students / Chola | `/m/1647` | `/r/9415` |
+| team / Rajputana | `/m/5312` | `/r/2760` |
+| team / Vijaya | `/m/7486` | `/r/4839` |
+| team / Maratha | `/m/2059` | `/r/6193` |
+| team / Chola | `/m/3728` | `/r/8524` |
+
+`build_mails.py` writes both copies in one pass, into `clan_reveal_mails/` and
+into `clan_reveal_websites/public/m/`, so **the file you send and the page you
+link are byte-identical** and cannot drift. It also clears `public/m` first,
+because a stale file there would keep being deployed forever. Vite copies
+`public/` into the build verbatim, so nothing else is needed.
+
+The `/m` codes are a **separate table** from the reveal codes and the two sets
+are disjoint. Reusing a reveal code would have meant `/m/9415` and `/r/9415`
+were the same clan, and anyone who noticed could map one space onto the other.
+A leaked mail URL gives nothing away regardless: the mails never name a clan,
+which is exactly why they are safe to host.
+
+### The rewrite order is load-bearing
+
+```json
+{ "source": "/m/:code(\\d{4})", "destination": "/m/:code.html" },
+{ "source": "/(.*)",             "destination": "/index.html" }
+```
+
+Rewrites are evaluated top to bottom, and the SPA catch-all would otherwise
+swallow `/m/1647` and hand back `index.html` — the React app, which has no such
+route, so every mail page would render as the friendly not-found. The pattern is
+pinned to exactly four digits so anything else under `/m` still falls through to
+the app's own not-found rather than 404ing raw from the CDN. Static files are
+matched before rewrites are consulted, so `/r/3184` and the hashed assets are
+untouched by either rule.
+
+`/m/*` is served `X-Robots-Tag: noindex, nofollow` — these are share links, not
+public pages.
+
 ## Routes
 
 Codes are meaningless on purpose: `/r/3184` gives away nothing, and the student
