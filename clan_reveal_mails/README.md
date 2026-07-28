@@ -37,7 +37,7 @@ Preview text is already baked into the HTML, no need to set it in the sending to
 python3 build_mails.py
 ```
 
-That regenerates all 8 files. Placeholder is `https://aarambh-clans.vercel.app/reveal`.
+That regenerates all 8 files. Placeholder is `https://arambh-clan-reveal-animations.vercel.app/reveal`.
 
 ## Images
 

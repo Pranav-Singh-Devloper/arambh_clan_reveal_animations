@@ -9,7 +9,7 @@ export default function NotFound() {
         </span>
         <h1 style={{ marginTop: 28 }}>This link has no clan</h1>
         <p>
-          Use the exact &ldquo;Reveal My Clan&rdquo; button from your email &mdash; each
+          Use the exact &ldquo;Reveal My Clan&rdquo; button from your email. Each
           one is unique. If it still does not work, write to{' '}
           <a href="mailto:learnerexperience@rishihood.edu.in" style={{ color: 'var(--crimson)', fontWeight: 700 }}>
             learnerexperience@rishihood.edu.in

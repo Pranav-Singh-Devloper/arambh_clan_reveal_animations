@@ -13,7 +13,7 @@ import os
 # ---------------------------------------------------------------------------
 # CONFIG - change these two lines when the reveal sites go live
 # ---------------------------------------------------------------------------
-REVEAL_BASE = "https://aarambh-clans.vercel.app"   # <-- live domain here
+REVEAL_BASE = "https://arambh-clan-reveal-animations.vercel.app"   # live, verified
 
 # Reveal-page codes. Deliberately meaningless: /r/3184 tells the recipient
 # nothing, and student/team codes for the same clan share no digits. These MUST

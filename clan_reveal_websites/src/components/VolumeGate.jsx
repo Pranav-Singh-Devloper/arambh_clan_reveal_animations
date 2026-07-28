@@ -66,7 +66,7 @@ export default function VolumeGate({ onBegin }) {
           <strong>Turn your volume up to 100%</strong>
           <span>
             This reveal is built around its sound. Headphones if you have them,
-            speakers if you don&apos;t &mdash; but do not do this on mute.
+            speakers if you don&apos;t. But do not do this on mute.
           </span>
         </motion.div>
 
