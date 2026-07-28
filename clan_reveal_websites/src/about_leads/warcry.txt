@@ -1,0 +1,16 @@
+Rajputana
+   
+warCry: 'राजपूताना राज करेगा!'
+
+Chola 
+
+warCry: ‘हर हर महादेव!’
+
+Vijaya 
+
+warCry: ‘विजया!’
+
+Maratha
+
+warCry: 'For Victory, For Glory, For Maratha, जय मराठा!'
+

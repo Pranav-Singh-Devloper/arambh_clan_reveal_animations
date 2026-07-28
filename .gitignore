@@ -1,0 +1,11 @@
+# dependencies and build output
+node_modules/
+dist/
+*.log
+
+# Vercel project link (machine-local)
+.vercel
+
+# macOS
+.DS_Store
+**/.DS_Store

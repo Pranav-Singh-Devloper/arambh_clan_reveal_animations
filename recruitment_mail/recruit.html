@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
+  <title>Aarambh | Organizing Team Recruitment</title>
+  <style>
+    /* Basic resets */
+    html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; height: 100% !important; }
+    body {
+      background: #f7f7f7;
+      font-family: Arial, Helvetica, sans-serif;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+      color: #2b2b2b;
+    }
+    table { border-collapse: collapse; border-spacing: 0; }
+    img { border: 0; display: block; line-height: 100%; outline: none; text-decoration: none; max-width: 100%; height: auto; }
+    a { text-decoration: none; }
+    .container { width: 100%; background: #f7f7f7; }
+    .shell { width: 100%; max-width: 760px; margin: 0 auto; }
+    .card {
+      background: #ffffff;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 20px 70px rgba(17, 24, 39, 0.12);
+      border: 1px solid rgba(255,255,255,0.7);
+    }
+    .hero {
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255, 122, 0, 0.20), transparent 28%),
+        radial-gradient(circle at 88% 18%, rgba(225, 29, 72, 0.18), transparent 24%),
+        linear-gradient(135deg, #fff8f0 0%, #ffffff 42%, #fff5f5 100%);
+    }
+    .brand-kicker {
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      font-size: 12px;
+      font-weight: 700;
+      color: #7a7a7a;
+    }
+    .title {
+      font-size: 42px;
+      line-height: 1.05;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #202020;
+      margin: 0;
+    }
+    .title .gradient {
+      background: linear-gradient(90deg, #ff7a00 0%, #ff3d2e 52%, #d81b60 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .subtitle {
+      font-size: 18px;
+      line-height: 1.7;
+      color: #4b5563;
+      margin: 0;
+    }
+    .cta {
+      display: inline-block;
+      background: linear-gradient(90deg, #ff7a00 0%, #ff3d2e 55%, #d81b60 100%);
+      color: #ffffff !important;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 16px 28px;
+      border-radius: 999px;
+      box-shadow: 0 14px 30px rgba(255, 96, 45, 0.28);
+    }
+    .section-title {
+      font-size: 14px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: #ff5f22;
+      margin: 0 0 10px 0;
+    }
+    .h2 {
+      font-size: 26px;
+      line-height: 1.2;
+      font-weight: 800;
+      color: #171717;
+      margin: 0;
+    }
+    .body-copy {
+      font-size: 16px;
+      line-height: 1.75;
+      color: #4b5563;
+      margin: 0;
+    }
+    .feature {
+      background: linear-gradient(180deg, rgba(255,122,0,0.06) 0%, rgba(255,61,46,0.03) 100%);
+      border: 1px solid rgba(255,122,0,0.12);
+      border-radius: 20px;
+      padding: 20px;
+    }
+    .feature h3 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      line-height: 1.2;
+      color: #1f2937;
+    }
+    .feature p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.7;
+      color: #5b6472;
+    }
+    .pill {
+      display: inline-block;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: #fff7f0;
+      color: #d9480f;
+      font-weight: 700;
+      font-size: 13px;
+      border: 1px solid rgba(255,122,0,0.18);
+    }
+    .callout {
+      background: linear-gradient(135deg, #111111 0%, #2a2a2a 100%);
+      border-radius: 24px;
+      color: #ffffff;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .callout:before {
+      content: "";
+      position: absolute;
+      top: -40px;
+      left: -40px;
+      width: 120px;
+      height: 120px;
+      background: radial-gradient(circle, rgba(255,122,0,0.45), rgba(255,122,0,0));
+    }
+    .callout:after {
+      content: "";
+      position: absolute;
+      right: -30px;
+      bottom: -30px;
+      width: 140px;
+      height: 140px;
+      background: radial-gradient(circle, rgba(216,27,96,0.35), rgba(216,27,96,0));
+    }
+    .important-box {
+      background: #fff7f1;
+      border: 1px solid rgba(255,122,0,0.16);
+      border-radius: 24px;
+      padding: 18px;
+    }
+    .footer {
+      font-size: 13px;
+      line-height: 1.7;
+      color: #7a7a7a;
+    }
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,122,0,0.2) 20%, rgba(216,27,96,0.2) 80%, transparent 100%);
+    }
+    @media only screen and (max-width: 640px) {
+
+  .shell {
+    width: 100% !important;
+  }
+
+  .card {
+    border-radius: 24px !important;
+  }
+
+  .px-40 {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+
+  .py-40 {
+    padding-top: 22px !important;
+    padding-bottom: 22px !important;
+  }
+
+  .title {
+    font-size: 31px !important;
+    line-height: 1.08 !important;
+  }
+
+  .h2 {
+    font-size: 22px !important;
+  }
+
+  .subtitle,
+  .body-copy {
+    font-size: 15px !important;
+    line-height: 1.7 !important;
+  }
+
+  .stack {
+    display: block !important;
+    width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .col-half {
+    display: inline-block !important;
+    width: 48% !important;
+    vertical-align: top !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .spacer-half {
+    display: inline-block !important;
+    width: 4% !important;
+  }
+
+  .mobile-hide {
+    display: none !important;
+  }
+
+  .col-full {
+    display: block !important;
+    width: 100% !important;
+    margin-top: 16px !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .callout {
+    padding: 28px !important;
+    border-radius: 24px !important;
+  }
+
+  .important-box {
+    border-radius: 24px !important;
+    padding: 18px !important;
+  }
+
+  .mobile-center {
+    text-align: center !important;
+  }
+
+  .mobile-block {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .spacer-sm {
+    display: block !important;
+    width: 100% !important;
+    height: 14px !important;
+    line-height: 14px !important;
+  }
+
+  .spacer-lg {
+    display: block !important;
+    width: 100% !important;
+    height: 24px !important;
+    line-height: 24px !important;
+  }
+
+  .pill {
+    display: inline-block !important;
+    margin-top: 14px !important;
+  }
+
+  .cta {
+    display: inline-block !important;
+    margin: 0 auto !important;
+  }
+
+  img[alt="Rishihood University"] {
+    width: 135px !important;
+    max-width: 135px !important;
+    margin: 0 auto 16px auto !important;
+  }
+
+  img[alt="Aarambh"] {
+    width: 150px !important;
+    max-width: 150px !important;
+    margin: 22px auto 0 auto !important;
+  }
+
+
+
+  .footer {
+    text-align: center !important;
+  }
+}
+  </style>
+</head>
+<body>
+  <!-- Preheader text (hidden in email client inbox preview) -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
+    Join the Aarambh Organizing Team and help shape an unforgettable beginning for every fresher.
+  </div>
+
+  <table role="presentation" class="container" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td align="center" style="padding: 28px 14px;">
+        <table role="presentation" class="shell" width="760" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td class="card" style="background:#ffffff; border-radius:24px; overflow:hidden;">
+
+              <!-- Hero -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="hero">
+                <tr>
+                  <td class="px-40 py-40" style="padding: 28px 40px 12px 40px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="left" valign="middle" class="stack mobile-center">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%;">
+                            <tr>
+                              <td class="stack mobile-center" style="padding:0 12px 0 0; vertical-align:middle;">
+                                <img src="https://raw.githubusercontent.com/raindeer-sociaI/aarambh_images/refs/heads/main/rishihood_complete_logo.png" alt="Rishihood University" width="156" style="max-width:156px; width:156px; height:auto; display:block; border-radius:12px;" />
+                              </td>
+                              <td class="stack mobile-center" style="vertical-align:middle;">
+                                <div style="display:inline-block; padding: 10px 14px; border-radius: 16px; background: rgba(255,255,255,0.78); border: 1px solid rgba(255,122,0,0.10); text-align: left;">
+                                  <div style="font-size:12px; letter-spacing:0.22em; text-transform:uppercase; font-weight:800; color:#7a7a7a; line-height:1;">Aarambh 2026</div>
+                                  <div style="margin-top:6px; font-size:13px; font-weight:700; color:#202020; line-height:1;">Organizing Team Recruitment</div>
+                                </div>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                        <td align="right" valign="middle" class="stack mobile-center" style="padding-top:12px; text-align:right;">
+                          <span class="pill">Team Recruitment</span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 26px;">
+                      <tr>
+                        <td>
+                          <div class="brand-kicker">Freshers Orientation • Batch of 2030</div>
+                          <div style="height:10px; line-height:10px;">&nbsp;</div>
+                          <h1 class="title">
+                            Join the <span class="gradient">Aarambh</span><br />
+                            Organizing Team
+                          </h1>
+                          <div style="height:16px; line-height:16px;">&nbsp;</div>
+                          <p class="subtitle" style="margin-bottom: 12px;">
+                            Aarambh is the official freshers orientation for the Batch of 2030. We are looking for passionate, responsible, and creative students to help build their first chapter at Rishihood University.
+                          </p>
+                          <p class="subtitle">
+                            If you love execution, energy, teamwork, and creating memorable experiences, this is your moment.
+                          </p>
+                          <div style="height:36px; line-height:36px;">&nbsp;</div>
+                          <a class="cta" href="https://forms.gle/8hsHJgAS8fp1FMbv8" target="_blank" rel="noopener">Apply Now</a>
+                          <div style="height:24px; line-height:24px;">&nbsp;</div>
+                          <p style="margin:0; font-size:13px; color:#6b7280; line-height:1.7;">
+                            Applications are open now. &nbsp;&nbsp;|&nbsp;&nbsp; Tentative early arrival: <strong style="color:#1f2937;">1st August</strong>
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px-40" style="padding: 10px 40px 34px 40px;">
+                    <div class="divider"></div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Body -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td class="px-40" style="padding: 0 40px 12px 40px;">
+                    <div class="section-title">Why this matters</div>
+                    <h2 class="h2">This is not just volunteering. It is ownership.</h2>
+                    <div style="height:12px; line-height:12px;">&nbsp;</div>
+                    <p class="body-copy">
+                      Aarambh is the beginning of every fresher’s journey, and the team behind it shapes that orientation experience from start to finish.
+                      From logistics and registration to hospitality, freshers’ engagement, tech, and stage flow, every role contributes to something unforgettable.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px-40" style="padding: 22px 40px 12px 40px;">
+                    <table role="presentation" class="mobile-block" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr class="mobile-block">
+                        <td class="col-half" valign="top" width="33.33%" style="padding-right: 12px;">
+                          <div class="feature">
+                            <h3>Build something real</h3>
+                            <p>Work on a live, high-impact event where reliability and execution actually matter.</p>
+                          </div>
+                        </td>
+                        <td class="spacer-half" width="12" style="font-size:0; line-height:0;">&nbsp;</td>
+                        <td class="col-half" valign="top" width="33.33%" style="padding-right: 12px;">
+                          <div class="feature">
+                            <h3>Lead under pressure</h3>
+                            <p>Show initiative, manage moving parts, and help solve problems in real time.</p>
+                          </div>
+                        </td>
+                        <td class="mobile-hide" width="12" style="font-size:0; line-height:0;">&nbsp;</td>
+                        <td class="col-full" valign="top" width="33.33%">
+                          <div class="feature">
+                            <h3>Create the first impression</h3>
+                            <p>Help every fresher feel welcomed, comfortable, and ready for their new journey.</p>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="px-40" style="padding: 28px 40px 12px 40px;">
+                    <table role="presentation" class="mobile-block" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr class="mobile-block">
+                        <td class="stack" valign="top" width="58%" style="padding-right: 16px;">
+                          <div class="callout">
+                            <div style="position:relative; z-index:1;">
+                              <div style="font-size:14px; letter-spacing:0.18em; text-transform:uppercase; font-weight:800; color:#ffb07b;">Who should apply?</div>
+                              <div style="height:10px; line-height:10px;">&nbsp;</div>
+                              <div style="font-size:22px; line-height:1.25; font-weight:800; margin:0 0 10px 0;">People who step up and take ownership.</div>
+                              <div style="font-size:15px; line-height:1.75; color:rgba(255,255,255,0.86);">
+                                If you enjoy meeting new people, taking ownership, solving problems, and working in teams — we want to hear from you.
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="spacer-lg" width="16" style="font-size:0; line-height:0;">&nbsp;</td>
+                        <td class="stack" valign="top" width="42%">
+                          <div class="important-box">
+                            <div class="section-title" style="margin-bottom:8px;">Important</div>
+                            <p style="margin:0; font-size:16px; line-height:1.6; color:#4b5563;">
+                              Selected students may be asked to arrive early. Please fill the form thoughtfully and apply only if you can fully commit.
+                            </p>
+                            <div style="height:12px; line-height:12px;">&nbsp;</div>
+                            <div style="font-size:13px; line-height:1.7; color:#6b7280;">
+                              Questions are quick, select-based, and focused on fit and availability.
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="px-40" style="padding: 16px 40px 24px 40px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="center" style="padding: 4px 0 8px 0;">
+                          <a class="cta" href="https://forms.gle/8hsHJgAS8fp1FMbv8" target="_blank" rel="noopener">Fill the Form</a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding-top: 6px;">
+                          <div style="font-size:13px; color:#6b7280; line-height:1.8;">
+                            We will carefully review applications and contact shortlisted candidates.
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td class="px-40" style="padding: 18px 40px 28px 40px;">
+                    <div class="divider"></div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px-40" style="padding: 0 40px 34px 40px;">
+                    <table role="presentation" class="mobile-block" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr class="mobile-block">
+                        <td valign="middle" width="70%"
+                          style="vertical-align:middle; text-align:left;"
+                          class="mobile-center mobile-block">
+                          <div class="footer">
+                            <strong style="color:#1f2937;">Team Aarambh</strong><br />
+                            The beginning of an unforgettable journey.
+                          </div>
+                        </td>
+                        <td valign="middle" width="30%" align="right"
+                          style="vertical-align:middle;"
+                          class="mobile-center mobile-block">
+                          <img src="https://raw.githubusercontent.com/raindeer-sociaI/aarambh_images/refs/heads/main/ChatGPT%20Image%20May%2031%2C%202026%2C%2001_03_19%20PM.png" alt="Aarambh" width="180" style="max-width:180px; width:180px; height:auto; display:block; margin-left:auto;" />
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

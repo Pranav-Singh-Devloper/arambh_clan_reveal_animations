@@ -1,0 +1,108 @@
+<!doctype html>
+<!-- Dev-only harness: renders the post-curtain block through an
+     OfflineAudioContext and prints objective measurements, so the sound can be
+     checked for clipping / silence / spectral balance without listening.
+     Run:  npx vite  ->  http://localhost:5174/audiotest.html  -->
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>audio measurement</title>
+</head>
+
+<body>
+  <pre id="out">rendering…</pre>
+  <script type="module">
+    const SR = 44100
+    const LEN = SR * 12
+
+    // The engine builds its own AudioContext; swap in an offline one so the
+    // whole graph renders deterministically and can be measured.
+    class FakeAC extends OfflineAudioContext {
+      constructor() { super(2, LEN, SR) }
+    }
+    window.AudioContext = FakeAC
+    window.webkitAudioContext = FakeAC
+
+    const A = await import('/src/audio/engine.js')
+    const ctx = A.unlock()
+    Object.defineProperty(ctx, 'state', { get: () => 'running' })
+
+    // the exact post-curtain schedule from RevealSequence
+    const CURTAIN = 0.2, IMPACT = 1.4
+    A.revealSwell(CURTAIN, IMPACT - CURTAIN)
+    A.bigImpact(IMPACT)
+    A.orchestralReveal(IMPACT + 0.02)
+    A.ovation(IMPACT + 0.5, 5.5)
+    A.airCannon(IMPACT + 0.05, -0.7)
+    A.airCannon(IMPACT + 0.11, 0.7)
+
+    const buf = await ctx.startRendering()
+    const L = buf.getChannelData(0), R = buf.getChannelData(1)
+
+    const win = (a, b) => [Math.floor(a * SR), Math.min(Math.floor(b * SR), LEN)]
+    const stats = (a, b) => {
+      const [s, e] = win(a, b)
+      let peak = 0, chPeak = 0, sum = 0, n = 0, bad = 0
+      for (let i = s; i < e; i++) {
+        const v = (L[i] + R[i]) / 2
+        if (!Number.isFinite(v) || !Number.isFinite(L[i]) || !Number.isFinite(R[i])) bad++
+        if (Math.abs(v) > peak) peak = Math.abs(v)
+        // per-channel too: a mono-sum peak cannot prove a channel is clean
+        chPeak = Math.max(chPeak, Math.abs(L[i]), Math.abs(R[i]))
+        sum += v * v; n++
+      }
+      return { peak, chPeak, rms: Math.sqrt(sum / n), bad }
+    }
+
+    // Goertzel at log-spaced bins -> spectral centroid (brightness).
+    // Twinkly chimes/whistles push this above ~1800Hz; a string+brass chord
+    // should sit low-mid.
+    const centroid = (a, b) => {
+      const [s] = win(a, b)
+      const N = 8192
+      const freqs = []
+      for (let i = 0; i < 40; i++) freqs.push(60 * Math.pow(8000 / 60, i / 39))
+      let num = 0, den = 0
+      for (const f of freqs) {
+        const k = (2 * Math.PI * f) / SR
+        const coeff = 2 * Math.cos(k)
+        let s1 = 0, s2 = 0
+        for (let i = 0; i < N && s + i < LEN; i++) {
+          const x = (L[s + i] + R[s + i]) / 2
+          const s0 = x + coeff * s1 - s2
+          s2 = s1; s1 = s0
+        }
+        const mag = Math.sqrt(s1 * s1 + s2 * s2 - coeff * s1 * s2)
+        num += f * mag; den += mag
+      }
+      return den > 0 ? num / den : 0
+    }
+
+    const corr = () => { // stereo width: 1 = mono, lower = wider
+      let sl = 0, sr = 0, slr = 0
+      const [s, e] = win(1.4, 8)
+      for (let i = s; i < e; i++) { sl += L[i] * L[i]; sr += R[i] * R[i]; slr += L[i] * R[i] }
+      return slr / Math.sqrt(sl * sr)
+    }
+
+    const all = stats(0, 12)
+    const rows = [
+      ['peak, mono sum', all.peak.toFixed(3), ''],
+      ['peak, worst channel', all.chPeak.toFixed(3), all.chPeak < 0.999 ? 'OK no clip' : 'CLIPPING'],
+      ['non-finite samples', all.bad, all.bad === 0 ? 'OK' : 'NaN IN GRAPH'],
+      ['impact rms  1.40-1.90s', stats(1.4, 1.9).rms.toFixed(4), ''],
+      ['chord  rms  2.50-4.00s', stats(2.5, 4).rms.toFixed(4), ''],
+      ['tail   rms  6.00-8.00s', stats(6, 8).rms.toFixed(4), ''],
+      ['tail   rms  8.50-9.50s', stats(8.5, 9.5).rms.toFixed(4), ''],
+      ['centroid impact 1.4s', centroid(1.4, 1.6).toFixed(0) + ' Hz', ''],
+      ['centroid chord  2.5s', centroid(2.5, 2.7).toFixed(0) + ' Hz', ''],
+      ['centroid tail   6.0s', centroid(6, 6.2).toFixed(0) + ' Hz', ''],
+      ['stereo correlation', corr().toFixed(3), corr() < 0.95 ? 'OK wide' : 'narrow'],
+    ]
+    document.getElementById('out').textContent =
+      rows.map(([k, v, n]) => k.padEnd(26) + String(v).padStart(10) + '  ' + n).join('\n')
+  </script>
+</body>
+
+</html>

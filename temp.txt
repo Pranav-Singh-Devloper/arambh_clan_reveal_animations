@@ -1,0 +1,53 @@
+Nakul 
+
+'Founder of a B2B AI services startup, building a company and leading a clan in the same year.',
+'Knows Rishihood’s policies end to end — the person to ask when you cannot work out how something is meant to work.',
+'Will defend the mess menu to anyone who will listen, which is as good a reason as any to go and talk to him.',
+
+Pranav
+
+'Selected in Haryana’s delegation to the National Youth Festival 2025, where his idea was pitched directly in front of the Prime Minister Shri Narendra Modi.',
+'Represented Rishihood at the NVIDIA AI Summit in Mumbai and met Jensen Huang, the founder and chief executive of NVIDIA.',
+'As Secretary of the Google Developer Group, ran Neutron Hackathon, Ideathon and Visual Vortex end to end — logistics, operations and sponsorship.',
+'Winner of DECODE 2025 and a finalist at Mumbai Hacks; his startup raindeer.social was selected for Rishihood’s AI Venture Studio.',
+'Part of the university swimming team at BOSOM 2025, plays electric guitar with Saarang, and has finished the 100 km Walk twice.'
+
+Neelanshu 
+
+'Fellow at Handshake AI on an international fellowship, designing benchmarks and evaluation systems for frontier AI models.',
+'Founder and President of SAST, building Rishihood’s space ecosystem — a rover team, NASA Space Apps, and a CubeSat shown at Bharat Mandapam.',
+'Leads Project Nebula with 65+ open-source contributors, and grew the SAST repository into an official Hacktoberfest selection.',
+'Vice President of Arthakram and winner of seven hackathons, pitching to the VP of Blinkit and an Executive Director at J.P. Morgan.',
+'Raised over ₹6 lakh in sponsorship for flagship events, and runs hackathons, exhibitions and astronomy outreach across campus.',
+
+Aaryan
+
+'Software development intern with real industry experience across software engineering and AI, turning what he learns into things that ship.',
+'District-level badminton and volleyball player, with the habit of performing when the scoreline is against him.',
+'Hackathon winner who builds working products against the clock, when the deadline is measured in hours rather than weeks.',
+'Secretary of the Google Developer Group, running developer events and building a culture of technical learning on campus.',
+'Set on using AI and emerging technology for problems that actually matter, rather than for the sake of the tool.',
+
+Kushagrah 
+
+'International Basketball Gold Medalist — he has competed at the highest level and knows exactly what the preparation costs.',
+'Third Runner-Up at the UCMAS International Abacus Competition — concentration and analytical problem-solving built from a young age.',
+'Prabhakar degree holder in Indian Classical Music, earned over years of practice in an art that rewards only patience.',
+'President of the Creators’ Club, leading a community of filmmakers and creators and mentoring the people inside it.',
+'Filmmaker and creative visionary who takes an idea all the way to the screen — story, direction and everything between.',
+
+Aabir 
+
+'Winner of seven product hackathons — a record built by turning an idea into a defensible product, repeatedly, under pressure.',
+'Building two startups at once while leading Chola, which tells you most of what you need to know about his standards.',
+'An entrepreneur and product manager at heart, with product thinking as the lens he brings to everything he builds.',
+'Follows investing and global markets closely, and will happily talk them through with anyone curious enough to ask.',
+'Passionate about public speaking, and glad to make the case for an idea in front of a room.',
+
+Deepanshu 
+
+'Third-year B.Tech student in Computer Science and AI, and a machine learning intern already building in the field.',
+'National-level Taekwondo athlete, university footballer and marathon enthusiast — whatever the next challenge is, he is already training for it.',
+'Community Manager at the Esports Federation of India, where he has led esports initiatives at both national and international level.',
+'President of SAGE, holding to a standard he set himself: serve something bigger than you, and stand by your teammates.',
+'Believes passion beats perfection, and that in Chola you do not simply participate — you dominate. His words, not ours.',
