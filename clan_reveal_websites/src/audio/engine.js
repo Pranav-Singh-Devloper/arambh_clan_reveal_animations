@@ -218,20 +218,75 @@ function primeSessionWithSilentElement() {
 /* Declared at import, before anything can construct an AudioContext. */
 claimLoudspeaker()
 
+/* HAS AUDIO ACTUALLY STARTED?
+
+   `ctx.state === 'running'` is necessary but NOT sufficient. On Android a
+   context can report 'running' while the underlying output stream never
+   opened, and the page is then completely silent - no effects, no music, from
+   either speaker - with nothing thrown to catch. That is the failure being
+   fixed here, and it is why this does not simply trust resume().
+
+   The only proof is to play something and see it finish. A one-sample silent
+   buffer is started inside the user gesture; if `onended` fires, the graph
+   really is producing output. This is the unlock howler.js settled on after
+   the same class of Android bug, and it is also, in Web Audio terms, exactly
+   the "start it muted, then let the real sound follow" idea - the silence is
+   in the samples, so nothing is heard, but the stream is genuinely open. */
+let audioProven = false
+let retryArmed = false
+
+export const isAudioProven = () => audioProven
+
+function proveOutput(context) {
+  try {
+    const buf = context.createBuffer(1, 1, 22050)
+    const src = context.createBufferSource()
+    src.buffer = buf
+    src.connect(context.destination)
+    src.onended = () => {
+      audioProven = true
+      try { src.disconnect() } catch { /* already gone */ }
+    }
+    src.start(0)
+  } catch { /* never fatal */ }
+}
+
+/* If the ping never came back, the next touch anywhere gets another go. A
+   visitor whose first tap did not take should not have to reload to get sound;
+   they will tap something within a second or two regardless. */
+function armRetry() {
+  if (retryArmed) return
+  retryArmed = true
+  const again = () => {
+    if (audioProven) { teardown(); return }
+    unlock()
+    if (audioProven) teardown()
+  }
+  const teardown = () => {
+    retryArmed = false
+    for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) {
+      document.removeEventListener(ev, again, true)
+    }
+  }
+  for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) {
+    document.addEventListener(ev, again, true)
+  }
+  // and stop listening eventually rather than leaking handlers for the session
+  setTimeout(() => { if (retryArmed && audioProven) teardown() }, 30000)
+}
+
 export function unlock() {
   const declared = claimLoudspeaker()
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext
     if (!AC) return null
-    /* latencyHint 'playback' rather than 'interactive'. Nothing here responds
-       to input - every sound is scheduled seconds ahead on the AudioContext
-       clock - so asking for the smallest possible buffer buys nothing and
-       costs battery and underrun headroom on a phone.
-       It does NOT affect routing: WebKit parses latencyHint into
-       AudioContextOptions and then never reads it (AudioContext::create still
-       carries a FIXME about where it should go). The speaker fix is entirely
-       claimLoudspeaker() above - do not treat this line as part of it. */
-    ctx = new AC({ latencyHint: 'playback' })
+    /* No latencyHint. It was briefly 'playback', on the reasoning that a bed
+       scheduled seconds ahead does not need a small buffer - but the research
+       for the iOS fix established that WebKit parses latencyHint and then
+       never reads it, so it bought nothing there, and it is one more
+       untested variable on the enormous range of Android audio HALs. The
+       default 'interactive' is the path every browser exercises most. */
+    ctx = new AC()
     if (!declared) primeSessionWithSilentElement()
     noiseBuf = makeNoise(ctx)
 
@@ -291,7 +346,22 @@ export function unlock() {
       if (!document.hidden && ctx && ctx.state === 'suspended') ctx.resume()
     })
   }
-  if (ctx.state === 'suspended') ctx.resume()
+  /* resume() must be called from inside the gesture's call stack, which is
+     why unlock() is invoked synchronously from the click handler and not from
+     any promise continuation after it. */
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+
+  // then prove it, rather than assume it
+  proveOutput(ctx)
+  if (!audioProven) {
+    setTimeout(() => {
+      if (audioProven) return
+      if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {})
+      proveOutput(ctx)
+      setTimeout(() => { if (!audioProven) armRetry() }, 400)
+    }, 350)
+  }
+
   master.gain.setTargetAtTime(muted ? 0 : MASTER_LEVEL, ctx.currentTime, 0.02)
   // NOTE: program.gain is deliberately NOT reset here - the gasp duck is
   // scheduled ~19.5s ahead, and a second unlock() mid-show must not erase it.

@@ -63,6 +63,43 @@ third party between a student and the payoff frame, and the logo one is on the
 volume gate, the very first thing anyone sees. The mails still use the GitHub
 URLs, because email has no bundler.
 
+## Android silence: why `ctx.state === 'running'` is not proof
+
+On some Android devices a context reports `running` while its underlying output
+stream never opened. The whole piece then plays to nobody - no effects, no
+music, from either speaker - and nothing is thrown to catch. Trusting
+`resume()` and moving on is what leaves a page silently broken.
+
+Three changes:
+
+1. **`latencyHint` removed.** It was briefly `'playback'`, added during the iOS
+   work on the reasoning that a bed scheduled seconds ahead needs no small
+   buffer. The research for that fix then established WebKit parses
+   `latencyHint` and never reads it, so it bought nothing - while remaining one
+   more untested variable across the enormous range of Android audio HALs. The
+   default is the path every browser exercises most.
+
+2. **The unlock now proves itself.** A one-sample silent buffer is started
+   inside the user gesture; `onended` firing is the only evidence the graph is
+   really producing output. This is the unlock howler.js arrived at after the
+   same class of Android bug. In Web Audio terms it is also exactly the
+   "start it muted, then let the real sound follow" idea - the silence is in
+   the samples, so nothing is heard, but the stream is genuinely open.
+
+3. **Two ways to recover.** `armRetry()` silently re-runs the unlock on the next
+   touch anywhere, and if the ping still has not returned 2.5s in, a **Tap for
+   sound** control appears beside the mute button. The piece carries on either
+   way; it is an offer, not a modal.
+
+`resume()` is called synchronously from the click handler's own call stack, not
+from a promise continuation after it, because Chrome requires the gesture stack.
+
+Tested with Chrome's **real autoplay policy** rather than
+`--autoplay-policy=no-user-gesture-required`, which every earlier audio test had
+been disabling - so the enforced path had never actually been exercised. Also
+tested with the proof deliberately broken, to confirm the recovery control
+appears rather than the page playing to nobody.
+
 ## The bed used to play only sometimes
 
 `decodeAudioData` **detaches** the ArrayBuffer it is handed. Fetch and decode

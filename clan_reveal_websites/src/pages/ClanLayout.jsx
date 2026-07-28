@@ -54,6 +54,13 @@ export default function ClanLayout() {
      on screen for the whole visit after being pressed, next to music it had
      already started. Anything the UI reacts to has to be state. */
   const [musicOn, setMusicOn] = useState(() => isPlaying())
+  /* Set when the silent unlock ping never came back, i.e. the graph is not
+     actually producing output. On some Android devices a context reports
+     'running' while its output stream never opened, and the entire piece then
+     plays to nobody with nothing thrown to catch. engine.js already retries on
+     the next touch anywhere; this is the visible half, so a visitor who does
+     not happen to tap is not left watching a silent film. */
+  const [audioBlocked, setAudioBlocked] = useState(false)
   const [flashOn, setFlashOn] = useState(false)
   const celebrated = useRef(false)
 
@@ -128,6 +135,8 @@ export default function ClanLayout() {
        decodeAudioData needs a context, so this has to follow unlock(). */
     preloadMusic(clan.music.src)
     new Image().src = clan.crest
+    // give the unlock ping time to come back before deciding it failed
+    setTimeout(() => setAudioBlocked(!A.isAudioProven()), 2500)
     // honour reduced-motion by skipping straight past the build-up
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduced) {
@@ -186,6 +195,7 @@ export default function ClanLayout() {
      starts the bed, rather than a page that is silently broken. */
   const soundOn = useCallback(() => {
     A.unlock()
+    setTimeout(() => setAudioBlocked(!A.isAudioProven()), 600)
     celebrated.current = true
     startMusic({ ...clan.music, delay: 0.15, fade: 2.5 })
     setMusicOn(true)
@@ -207,6 +217,21 @@ export default function ClanLayout() {
 
       {stage === 'revealed' && (
         <Outlet context={{ clan, copy, muted, musicOn, soundOn, celebrated }} />
+      )}
+
+      {/* Recovery, not decoration: one tap re-runs the whole unlock. */}
+      {audioBlocked && stage !== 'gate' && (
+        <button
+          className="sound-blocked"
+          onClick={() => { A.unlock(); setTimeout(() => setAudioBlocked(!A.isAudioProven()), 500) }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M11 5 6.5 9H3v6h3.5L11 19Z" />
+            <path d="M15.5 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" />
+          </svg>
+          Tap for sound
+        </button>
       )}
 
       {stage !== 'gate' && (
