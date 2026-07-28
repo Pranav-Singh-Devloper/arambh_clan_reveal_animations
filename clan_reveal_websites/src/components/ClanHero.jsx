@@ -150,14 +150,23 @@ export default function ClanHero({ clan, copy }) {
 
       <motion.div
         className="scroll-hint"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.55, y: [0, 6, 0] }}
-        transition={{
-          opacity: { delay: 3.6, duration: 0.8 },
-          y: { delay: 3.6, duration: 2.6, repeat: Infinity, ease: 'easeInOut' },
-        }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 3.6, duration: 0.9, ease: QUINT_OUT }}
       >
-        Scroll &darr;
+        {/* Word, rail, chevron. The rail carries a light that runs down it on a
+            loop - a hairline is the device used everywhere else on this page,
+            and one travelling downward says "go this way" without needing to
+            bounce the whole thing around. The previous hint was --fg-faint at
+            38% ink multiplied by an animated opacity of 0.55, so it arrived at
+            roughly a fifth of full strength and nobody could see it. */}
+        <span className="scroll-word">Scroll</span>
+        <span className="scroll-rail"><i /></span>
+        <svg className="scroll-chev" width="13" height="8" viewBox="0 0 13 8" fill="none"
+          stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden="true">
+          <path d="M1 1l5.5 5.5L12 1" />
+        </svg>
       </motion.div>
     </header>
   )

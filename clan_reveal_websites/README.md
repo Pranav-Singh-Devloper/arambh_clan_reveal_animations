@@ -353,6 +353,37 @@ the visitor left, which is what the browser would do on its own. React Router
 v7 ships `<ScrollRestoration>` for this, but it needs a data router
 (`createBrowserRouter`) and this app uses `BrowserRouter`.
 
+## The scroll hint, and the hero fitting on a laptop
+
+The hint was `--fg-faint` (38% ink) multiplied by an animated `opacity: 0.55` -
+about a fifth of full strength, which is why nobody could see it. It is now the
+clan colour at full opacity, **7.6:1 contrast**, as a word over a hairline rail
+with a light running down it and a chevron beneath. The rail is the device used
+everywhere else on this page, and one travelling downward says "go this way"
+without bouncing the whole block around.
+
+Making it taller exposed two things:
+
+- **It landed on top of the spectrum** and "SCROLL" printed straight over the
+  bars. `.hero`'s bottom padding now reserves the hint's space, computed from
+  the hint's own parts rather than guessed.
+- **The hero never fitted a laptop.** It was a flat 886px tall whatever the
+  screen, so at 1366x768 or 1280x720 - two of the commonest sizes there are -
+  the war cry, the spectrum and the hint all sat below the fold. The payoff of
+  a 22-second build-up did not fit in one view. The crest and the clan name now
+  answer to **height** as well as width (`min(34vw, 24vh)`), and the vertical
+  rhythm tightens with them.
+
+Measured across 8 viewports from 1512x860 down to 360x640: zero overflow, hint
+always on screen and clear of the spectrum, clan name always on one line.
+
+### That media block must stay at the end of `global.css`
+
+A media query adds **no specificity**. The short-viewport rules were first
+written next to `.hero`, which is declared before `.crest`, `.clan-name` and
+`.cry` - so every one of those later plain rules quietly won and the whole block
+did nothing. It has to come after everything it overrides.
+
 ## The mails are hosted too
 
 Every mail also ships as a page on this same deployment, so a link can be

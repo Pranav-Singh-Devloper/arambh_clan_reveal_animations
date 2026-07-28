@@ -734,9 +734,17 @@ a { color: inherit; }
   display: grid;
   place-items: center;
   text-align: center;
-  padding: 64px 18px 56px;
+  /* The bottom padding RESERVES the scroll hint's space. The hint is absolutely
+     positioned, so it takes no room in the flow - and when it grew from a
+     14px line to a 78px word-rail-chevron, it landed straight on top of the
+     spectrum and "SCROLL" became unreadable over the bars. This keeps the
+     flow content clear of it; the var is shared with .scroll-hint so the two
+     cannot drift apart. */
+  --scroll-hint-space: clamp(74px, 12vw, 104px);
+  padding: 64px 18px var(--scroll-hint-space);
   overflow: hidden;
 }
+
 
 .hero-aura {
   position: absolute;
@@ -860,15 +868,72 @@ a { color: inherit; }
   color: var(--fg-muted);
 }
 
+/* THE SCROLL HINT.
+   Set in the clan colour at full strength, not in faint ink at half opacity -
+   there is a whole page below this and nobody scrolls to something they cannot
+   see. The motion is a light running down a hairline rather than the block
+   bobbing: the page is built out of hairlines, so this reads as part of it. */
 .scroll-hint {
   position: absolute;
-  bottom: 20px;
+  bottom: clamp(12px, 2.2vw, 18px);
   left: 50%;
   transform: translateX(-50%);
-  font-size: 10px;
-  letter-spacing: 0.3em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  color: var(--clan);
+}
+
+.scroll-word {
+  font-family: var(--sans);
+  font-size: clamp(10px, 2.4vw, 11px);
+  font-weight: 600;
+  letter-spacing: 0.34em;
   text-transform: uppercase;
-  color: var(--fg-faint);
+  /* the tracking is all trailing, so the word sits off-centre without this */
+  text-indent: 0.34em;
+  animation: scroll-word-breathe 2.6s ease-in-out infinite;
+}
+
+.scroll-rail {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: clamp(26px, 5vw, 38px);
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+/* the light itself */
+.scroll-rail i {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 45%;
+  background: linear-gradient(to bottom, transparent, var(--clan));
+  animation: scroll-rail-run 1.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.scroll-chev {
+  animation: scroll-chev-drop 1.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes scroll-rail-run {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  35%  { opacity: 1; }
+  100% { transform: translateY(240%); opacity: 0; }
+}
+
+@keyframes scroll-chev-drop {
+  0%, 55%  { transform: translateY(0); opacity: 0.45; }
+  78%      { transform: translateY(3px); opacity: 1; }
+  100%     { transform: translateY(0); opacity: 0.45; }
+}
+
+@keyframes scroll-word-breathe {
+  0%, 100% { opacity: 0.72; }
+  50%      { opacity: 1; }
 }
 
 /* the beat-reactive spectrum under the hero */
@@ -1820,4 +1885,46 @@ a { color: inherit; }
 
 @media (max-width: 520px) {
   .sound-blocked { top: 14px; right: 62px; padding: 8px 11px; font-size: 9.5px; }
+}
+
+/* ---------------------------------------------------------------------------
+   SHORT VIEWPORTS.  Must stay at the END of this file.
+
+   A media query adds NO specificity. These rules sat next to .hero, which is
+   declared before .crest, .clan-name and .cry - so every one of those later
+   plain rules quietly won and the block did nothing at all.
+
+   The hero was a flat 886px tall whatever the screen, so on a
+   1366x768 or 1280x720 laptop - two of the most common sizes there are - the
+   war cry, the spectrum and the scroll hint all sat below the fold, and the
+   payoff of a 22-second build-up did not fit in one view. The crest is the
+   biggest single element, so it now answers to height as well as width, and
+   the vertical rhythm tightens with it. */
+@media (max-height: 880px) {
+  .hero {
+    /* Reserved from the hint's own parts rather than guessed: word 14 + gap 9
+       + rail + gap 9 + chevron 8, plus its offset from the bottom. Guessing it
+       is how "SCROLL" ended up printed over the spectrum bars. */
+    --scroll-hint-space: calc(clamp(20px, 3.4vh, 38px) + clamp(10px, 1.6vh, 18px) + 48px);
+    padding-top: clamp(22px, 3.6vh, 64px);
+  }
+  /* The two tallest things answer to HEIGHT as well as width. On a wide-but-
+     short laptop both were pinned at their width-derived maximum, which is why
+     886px of hero met a 768px screen. */
+  .crest { width: clamp(120px, min(34vw, 24vh), 258px); }
+  .clan-name {
+    font-size: clamp(30px, min(12vw, 15.5vh), 148px);
+    margin: clamp(6px, 1.2vh, 34px) 0 0;
+  }
+  .cry { margin-top: clamp(8px, 1.4vh, 26px); font-size: clamp(17px, min(4.4vw, 3.4vh), 30px); }
+  .welcome-line { margin-top: clamp(6px, 1.1vh, 18px); }
+  .spectrum-wrap { margin-top: clamp(10px, 1.8vh, 40px); }
+  .scroll-hint { gap: 6px; }
+  .scroll-rail { height: clamp(20px, 3.4vh, 38px); }
+}
+
+@media (max-height: 720px) {
+  .hero { padding-top: clamp(14px, 2.4vh, 40px); }
+  .spectrum { height: clamp(24px, 4vh, 40px); }
+  .spectrum-wrap { width: min(460px, 72vw); }
 }
