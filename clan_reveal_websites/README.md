@@ -381,6 +381,20 @@ were the same clan, and anyone who noticed could map one space onto the other.
 A leaked mail URL gives nothing away regardless: the mails never name a clan,
 which is exactly why they are safe to host.
 
+### `vercel.json` takes no comments
+
+It is schema-validated. A `"//"` key - the usual JSON comment dodge - is an
+unknown property, and Vercel rejects the whole file and **fails the build**.
+That is exactly what happened here: two commits sat unpublished for twenty
+minutes while the site kept serving the previous deployment, with no visible
+error anywhere except the Vercel build log. If you need to explain something
+about that file, explain it here instead.
+
+It is also why "the bundle hash matches" is not proof a deploy landed. Neither
+the JS nor the CSS changed in the commit that added the mails, so the old
+deployment looked byte-identical on the only thing being compared. Check for
+something the new commit actually introduced.
+
 ### The rewrite order is load-bearing
 
 ```json
