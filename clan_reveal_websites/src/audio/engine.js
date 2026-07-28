@@ -414,10 +414,8 @@ export const isReady = () => !!ctx
 export const context = () => ctx
 
 /* Run `fn` once the AudioContext clock is actually advancing.
-   Visuals use wall-clock setTimeouts; audio uses ctx.currentTime. If we start
-   both while the context is still suspended (resume() pending after Begin),
-   the timers race ahead on a frozen audio clock - on mobile that is a fixed
-   stretch of silent picture until resume finally lands. */
+   Starting the reveal's setTimeout train while resume() is still pending
+   races wall-clock cues ahead of a frozen audio clock on mobile. */
 export function whenRunning(fn) {
   if (!ctx || ctx.state === 'running') {
     fn()
@@ -431,8 +429,16 @@ export function whenRunning(fn) {
     fn()
   }
   const waking = ctx.resume()
-  if (waking && typeof waking.then === 'function') waking.then(go, go)
-  else go()
+  if (waking && typeof waking.then === 'function') {
+    // One rAF after resume lets currentTime settle - some mobile HALs jump
+    // the clock once the output stream actually opens.
+    waking.then(() => {
+      if (cancelled) return
+      requestAnimationFrame(go)
+    }, go)
+  } else {
+    go()
+  }
   // safety: never leave the reveal on a black screen if resume hangs
   const fallback = setTimeout(go, 1000)
   return () => {

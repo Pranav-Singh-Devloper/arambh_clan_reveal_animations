@@ -4,14 +4,22 @@ import * as A from '../audio/engine'
 import Stage from './Stage'
 
 /* ===========================================================================
-   Beat sheet, in seconds from the moment BEGIN is pressed. Audio is scheduled
-   on the AudioContext clock and visuals on setTimeout from the same t0.
+   Beat sheet, in seconds from the moment BEGIN is pressed. Visuals and audio
+   both fire from the same setTimeout train. Each cue asks for A.now()+LEAD
+   at fire time - never a 22s-ahead AudioContext schedule.
+
+   Why: on mobile the context is created suspended on page load, and when it
+   finally resumes after Begin, currentTime often jumps. Every event that was
+   pre-scheduled against the old clock lands in the past and is dropped. The
+   confetti path already did the live thing (A.now()+0.03 at impact) and was
+   the only sound that survived - that is the bug this shape fixes.
 
    Tension curve: wonder -> weight -> dread -> acceleration -> THE CUT
    (1.55s of near-silence - the gasp) -> release. The countdown is
    deliberately metronomic (1.2 / 1.2); then the meter breaks by RUPTURE:
    the world dies at +0.75 instead of delivering the expected next beat.
    =========================================================================== */
+const LEAD = 0.05 // schedule just ahead of now so attack ramps are not already past
 const T = {
   four: 0.8,      // one breath of pure dark first
   one: 2.8,
@@ -102,89 +110,85 @@ export default function RevealSequence({ onImpact, onComplete }) {
 
   // Latest callbacks in refs so the scheduling effect can be mount-once.
   // With [onImpact, onComplete] deps, ANY parent re-render with a fresh
-  // callback identity re-ran the effect: cleanup clears only the setTimeouts,
-  // never the Web Audio events already on the context clock - so the whole
-  // soundtrack got scheduled a second time on top of the first.
+  // callback identity would re-run the effect and restart the show.
   const onImpactRef = useRef(onImpact)
   const onCompleteRef = useRef(onComplete)
   onImpactRef.current = onImpact
   onCompleteRef.current = onComplete
 
-  // StrictMode guard: dev double-invokes the effect on the same instance;
-  // timers are cleaned up and re-armed, but scheduled audio cannot be, so
-  // audio must only ever be scheduled once per component instance.
-  const audioScheduled = useRef(false)
-
   useEffect(() => {
     timers.current = []
     const at = (s, fn) => timers.current.push(setTimeout(fn, s * 1000))
+    const t = () => A.now() + LEAD
+    let murmur = null
 
-    /* Audio rides ctx.currentTime; visuals ride setTimeout. On mobile,
-       unlock()'s resume() is still pending when this effect first runs, so the
-       audio clock is frozen while wall-clock timers are already counting -
-       the visitor watches a silent film until resume lands. Hold both until
-       the context is actually running, then take one shared t0. */
+    /* Hold the whole train until the context is running. Starting setTimeouts
+       while resume() is still pending races wall-clock visuals ahead of a
+       frozen audio clock on mobile. */
     const cancelWait = A.whenRunning(() => {
-      const t0 = A.now()
+      /* ---------------- bed opens immediately ---------------- */
+      at(0, () => {
+        const when = t()
+        A.whoosh(when)
+        A.drone(when, T.cut) // duration ends AT the cut
+        murmur = A.crowdMurmur(when + 0.2, T.tap - 0.2)
+      })
 
-      if (!audioScheduled.current) {
-        audioScheduled.current = true
-
-        /* ---------------- audio, scheduled up front ---------------- */
-        A.whoosh(t0)
-        A.drone(t0, T.cut)                       // the drone dies AT the cut
-        const murmur = A.crowdMurmur(t0 + 0.2, T.tap - 0.2)
-
-        A.curtainRumble(t0 + T.stage, 1.9)
-        for (let i = 0; i < FOOTLIGHTS; i++) {
-          A.lightClunk(t0 + T.foot + i * FOOT_GAP, -0.8 + i * 0.2) // L -> R
-        }
-        A.whoosh(t0 + T.spots, 1.2, -0.7, 0.7)   // the spot crosses the stage
-
-        A.gong(t0 + T.allotted)
-        A.hush(murmur, t0 + T.hush, 1.6)
-        A.orchestraTuning(t0 + T.tuning, 2.3)
-        A.conductorTap(t0 + T.tap, 3, 0.34)
-
-        A.drumroll(t0 + T.breath, T.cut - T.breath)
-        A.timpaniRoll(t0 + T.breath, T.cut - T.breath)
-        A.riser(t0 + T.riser, T.cut - T.riser)
-        A.countHit(t0 + T.c3, 0)
-        A.countHit(t0 + T.c2, 1)
-        A.countHit(t0 + T.c1, 2)
-
-        // THE CUT: program bus dies in 100ms; snaps back 30ms before the impact.
-        A.gaspDuck(t0 + T.cut, t0 + T.impact)
-        A.heartbeat(t0 + T.cut + 0.35, 2, 0.75)  // dry, direct - survives the duck
-        A.tremorRustle(t0 + T.curtain - 0.4)     // a hand already on the velvet
-        A.inhale(t0 + T.curtain - 0.35)          // the room breathes in
-
-        A.curtainRumble(t0 + T.curtain, 2.4)
-        A.curtainRustle(t0 + T.curtain, 2.2)
-        A.revealSwell(t0 + T.curtain, T.impact - T.curtain)
-
-        A.bigImpact(t0 + T.impact)
-        A.orchestralReveal(t0 + T.impact + 0.02)
-        A.ovation(t0 + T.impact + 0.5, 5.5)
-      }
-
-      /* ---------------- visuals ---------------- */
+      /* ---------------- visuals + matching audio cues ---------------- */
       at(T.four, () => setPhase('four'))
       at(T.one, () => setPhase('one'))
       at(T.stage - 0.55, () => setPhase('none')) // title fully out BEFORE the house assembles
-      at(T.stage, () => setShowStage(true))
+      at(T.stage, () => {
+        setShowStage(true)
+        A.curtainRumble(t(), 1.9)
+      })
       for (let i = 0; i < FOOTLIGHTS; i++) {
-        at(T.foot + i * FOOT_GAP, () => setLit(i + 1))
+        at(T.foot + i * FOOT_GAP, () => {
+          setLit(i + 1)
+          A.lightClunk(t(), -0.8 + i * 0.2) // L -> R
+        })
       }
-      at(T.allotted + 0.12, () => setPhase('allotted'))  // the text rides the gong's bloom
+      at(T.spots, () => A.whoosh(t(), 1.2, -0.7, 0.7))
+      at(T.allotted, () => A.gong(t()))
+      at(T.allotted + 0.12, () => setPhase('allotted')) // the text rides the gong's bloom
       at(T.allottedOut, () => setPhase('none'))
-      at(T.breath, () => setPhase('breath'))
-      at(T.c3, () => setPhase('c3'))
-      at(T.c2, () => setPhase('c2'))
-      at(T.c1, () => setPhase('c1'))
-      at(T.cut, () => { setPhase('blank'); setGasp(true) })
-      at(T.curtain, () => setCurtainOpen(true))
+      at(T.hush, () => A.hush(murmur, t(), 1.6))
+      at(T.tuning, () => A.orchestraTuning(t(), 2.3))
+      at(T.tap, () => A.conductorTap(t(), 3, 0.34))
+      at(T.breath, () => {
+        setPhase('breath')
+        const when = t()
+        A.drumroll(when, T.cut - T.breath)
+        A.timpaniRoll(when, T.cut - T.breath)
+      })
+      at(T.riser, () => A.riser(t(), T.cut - T.riser))
+      at(T.c3, () => { setPhase('c3'); A.countHit(t(), 0) })
+      at(T.c2, () => { setPhase('c2'); A.countHit(t(), 1) })
+      at(T.c1, () => { setPhase('c1'); A.countHit(t(), 2) })
+      at(T.cut, () => {
+        setPhase('blank')
+        setGasp(true)
+        const when = t()
+        // program bus dies in 100ms; snaps back 30ms before the impact
+        A.gaspDuck(when, when + (T.impact - T.cut))
+        A.heartbeat(when + 0.35, 2, 0.75) // dry, direct - survives the duck
+      })
+      at(T.curtain - 0.4, () => A.tremorRustle(t())) // a hand already on the velvet
+      at(T.curtain - 0.35, () => A.inhale(t())) // the room breathes in
+      at(T.curtain, () => {
+        setCurtainOpen(true)
+        const when = t()
+        A.curtainRumble(when, 2.4)
+        A.curtainRustle(when, 2.2)
+        A.revealSwell(when, T.impact - T.curtain)
+      })
       at(T.impact - 0.06, () => onImpactRef.current())
+      at(T.impact, () => {
+        const when = t()
+        A.bigImpact(when)
+        A.orchestralReveal(when + 0.02)
+      })
+      at(T.impact + 0.5, () => A.ovation(t(), 5.5))
       at(T.done, () => onCompleteRef.current())
     })
 
