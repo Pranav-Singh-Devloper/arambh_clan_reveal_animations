@@ -295,7 +295,12 @@ export const ROUTES = {
 }
 
 export function resolveCode(code) {
-  const entry = ROUTES[code]
+  /* hasOwnProperty, not a bare lookup. ROUTES is a plain object literal, so
+     /r/constructor and /r/toString resolved to Object.prototype members -
+     truthy, spread into a clan with no `color`, and the page died on
+     clan.color.replace() with a white screen instead of the not-found page.
+     A human will not type those, but a crawler or a mangled mail link will. */
+  const entry = Object.prototype.hasOwnProperty.call(ROUTES, code) ? ROUTES[code] : null
   if (!entry) return null
   return { code, ...entry, ...CLANS[entry.clan] }
 }

@@ -217,6 +217,167 @@ await path('back-navigation resumes and finishes', async (p) => {
   return state(p)
 }, (s) => s.hero && s.clan === 'Chola')
 
+/* ---- the two things this release added, both silently regressible ---- */
+
+/* 1. iOS routes Web Audio to the phone-call EARPIECE unless the page declares
+      itself as media playback. Chrome has no navigator.audioSession, so shim
+      one that records what the app does to it. This proves the call happens,
+      with the right value, BEFORE the AudioContext is constructed - which is
+      the ordering that matters and the part that can rot. It cannot prove iOS
+      then routes to the loudspeaker; only a physical iPhone can. */
+{
+  const page = await browser.newPage()
+  await page.evaluateOnNewDocument(() => {
+    window.__session = { sets: [], ctxAt: null, audioEls: 0 }
+    let type = 'auto'
+    Object.defineProperty(navigator, 'audioSession', {
+      configurable: true,
+      value: Object.defineProperty({}, 'type', {
+        get: () => type,
+        set: (v) => { type = v; window.__session.sets.push({ v, beforeCtx: window.__session.ctxAt === null }) },
+      }),
+    })
+    const AC = window.AudioContext
+    window.AudioContext = function (...a) {
+      window.__session.ctxAt = window.__session.sets.length
+      window.__session.latencyHint = a[0] && a[0].latencyHint
+      return new AC(...a)
+    }
+    window.AudioContext.prototype = AC.prototype
+    const OA = window.Audio
+    window.Audio = function (...a) { window.__session.audioEls++; return new OA(...a) }
+  })
+  await page.goto(`${BASE}/r/9415`, { waitUntil: 'networkidle2' })
+  await page.evaluate(() => document.querySelector('.begin').click())
+  await new Promise((r) => setTimeout(r, 1200))
+  const s = await page.evaluate(() => ({ ...JSON.parse(JSON.stringify(window.__session)), now: navigator.audioSession.type }))
+  const ok = s.now === 'playback' &&
+    s.sets.some((x) => x.v === 'playback' && x.beforeCtx) &&
+    s.latencyHint === 'playback' &&
+    s.audioEls === 0            // silent anchor is iOS-only, must not fire here
+  if (!ok) failures++
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${'iOS audio session -> loudspeaker'.padEnd(38)} ` +
+    `type:${s.now} setBeforeAudioContext:${s.sets.some((x) => x.beforeCtx)} latencyHint:${s.latencyHint} silentAnchors:${s.audioEls}`)
+  await page.close()
+}
+
+/* 2. The music must run straight through the move to /r/:code/other-leads and
+      back. Measured on the real audio graph, not on anything the UI claims:
+      a restart is a second start() on the long buffer, a teardown is a stop()
+      on it, and the analyser the spectrum already polls gives a continuous
+      loudness trace either side of each navigation. */
+{
+  const page = await browser.newPage()
+  await page.evaluateOnNewDocument(() => {
+    window.__ev = { starts: [], stops: [] }
+    window.__lvl = []
+    const S = AudioBufferSourceNode.prototype
+    const os = S.start, ost = S.stop
+    S.start = function (...a) { window.__ev.starts.push(this.buffer ? +this.buffer.duration.toFixed(1) : 0); return os.apply(this, a) }
+    S.stop = function (...a) { window.__ev.stops.push(this.buffer ? +this.buffer.duration.toFixed(1) : 0); return ost.apply(this, a) }
+    const An = AnalyserNode.prototype, ofd = An.getByteFrequencyData
+    An.getByteFrequencyData = function (arr) {
+      ofd.call(this, arr)
+      let sum = 0
+      for (let i = 0; i < arr.length; i++) sum += arr[i]
+      window.__lvl.push([Math.round(performance.now()), Math.round(sum / arr.length)])
+    }
+  })
+  await page.goto(`${BASE}/r/9415`, { waitUntil: 'networkidle2' })
+  await page.evaluate(() => document.querySelector('.begin').click())
+  await new Promise((r) => setTimeout(r, 600))
+  await page.evaluate(() => document.querySelector('.skip-btn')?.click())
+  await new Promise((r) => setTimeout(r, 8000))
+  const navAt = await page.evaluate(() => { document.querySelector('.other-cta-btn').click(); return Math.round(performance.now()) })
+  await new Promise((r) => setTimeout(r, 5000))
+  const backAt = await page.evaluate(() => { document.querySelector('.other-cta-btn').click(); return Math.round(performance.now()) })
+  await new Promise((r) => setTimeout(r, 4000))
+  const r = await page.evaluate(() => ({ ev: window.__ev, lvl: window.__lvl }))
+  const starts = r.ev.starts.filter((d) => d > 30).length
+  const stops = r.ev.stops.filter((d) => d > 30).length
+  const after = (t) => r.lvl.filter(([x]) => x >= t + 100 && x <= t + 2500).map(([, v]) => v)
+  const silentAfter = [navAt, backAt].map((t) => after(t).filter((v) => v <= 1).length)
+  const ok = starts === 1 && stops === 0 && silentAfter.every((n) => n === 0)
+  if (!ok) failures++
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${'music gapless across both routes'.padEnd(38)} ` +
+    `musicStarts:${starts} musicStops:${stops} silentFramesAfterNav:${silentAfter.join(',')}`)
+  await page.close()
+}
+
+/* 3. The other-leads grid. Three of the four pages carry five cards, so the
+      short final row has to centre; cards in a row have to match width and
+      height or the set reads as broken. */
+for (const [code, clan, want] of [['3184', 'Rajputana', 5], ['5027', 'Vijaya', 6], ['7362', 'Maratha', 5], ['9415', 'Chola', 5]]) {
+  for (const w of [1440, 820, 390]) {
+    const page = await browser.newPage()
+    await page.setViewport({ width: w, height: 900 })
+    const bag = []
+    page.on('pageerror', (e) => bag.push(e.message))
+    await page.goto(`${BASE}/r/${code}/other-leads`, { waitUntil: 'networkidle2' })
+    await new Promise((r) => setTimeout(r, 1500))
+    const g = await page.evaluate(() => {
+      const cs = [...document.querySelectorAll('.other-card')].map((c) => {
+        const r = c.getBoundingClientRect()
+        return { l: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width), h: Math.round(r.height), t: Math.round(r.top + window.scrollY) }
+      })
+      const rows = {}
+      cs.forEach((c) => { (rows[c.t] = rows[c.t] || []).push(c) })
+      return {
+        n: cs.length,
+        rows: Object.keys(rows).sort((a, b) => a - b).map((t) => {
+          const row = rows[t]
+          const L = Math.min(...row.map((c) => c.l)), R = Math.max(...row.map((c) => c.r))
+          return { n: row.length, widths: new Set(row.map((c) => c.w)).size, eqH: new Set(row.map((c) => c.h)).size === 1,
+                   off: Math.round((L + R) / 2 - window.innerWidth / 2) }
+        }),
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        spectrum: !!document.querySelector('canvas'),
+        // a card must never wear the visiting clan's colour
+        chips: [...document.querySelectorAll('.other-clan-chip')].map((e) => e.textContent),
+      }
+    })
+    const ok = g.n === want && g.spectrum && g.overflow <= 0 && !bag.length &&
+      g.rows.every((r) => Math.abs(r.off) <= 2 && r.widths === 1 && r.eqH) &&
+      !g.chips.includes(clan)
+    if (!ok) failures++
+    console.log(`${ok ? 'PASS' : 'FAIL'}  other-leads /r/${code} ${clan.padEnd(10)} @${String(w).padStart(4)}px  ` +
+      `cards:${g.n}/${want} rows:${g.rows.map((r) => r.n).join('+')} centred:${g.rows.every((r) => Math.abs(r.off) <= 2)} ` +
+      `equalHeight:${g.rows.every((r) => r.eqH)} overflowX:${g.overflow} spectrum:${g.spectrum}` +
+      (bag.length ? `  ERRORS: ${bag.join(' | ')}` : ''))
+    await page.close()
+  }
+}
+
+/* 4. Card surfaces in the SHIPPED theme. .other-card inherited var(--surface),
+      which in light is a 2.8% wash - invisible on the cream page, while dark
+      looked perfect. Comparing against .leader-card catches the next card type
+      that ships as a ghost panel. And the sound-on button has to clear once it
+      has done its job: it was gated on a plain isPlaying() module read with
+      nothing to re-render on, so it sat there for the rest of the visit. */
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 1440, height: 900 })
+  await page.goto(`${BASE}/r/9415/other-leads`, { waitUntil: 'networkidle2' })
+  await new Promise((r) => setTimeout(r, 1200))
+  const before = await page.evaluate(() => !!document.querySelector('.sound-on'))
+  const otherBg = await page.evaluate(() => getComputedStyle(document.querySelector('.other-card')).backgroundColor)
+  await page.evaluate(() => document.querySelector('.sound-on')?.click())
+  await new Promise((r) => setTimeout(r, 4000))
+  const after = await page.evaluate(() => !!document.querySelector('.sound-on'))
+  await page.goto(`${BASE}/r/9415`, { waitUntil: 'networkidle2' })
+  await page.evaluate(() => document.querySelector('.begin').click())
+  await new Promise((r) => setTimeout(r, 600))
+  await page.evaluate(() => document.querySelector('.skip-btn')?.click())
+  await new Promise((r) => setTimeout(r, 2500))
+  const leaderBg = await page.evaluate(() => getComputedStyle(document.querySelector('.leader-card')).backgroundColor)
+  const ok = otherBg === leaderBg && before && !after
+  if (!ok) failures++
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${'other-leads surfaces + sound-on'.padEnd(38)} ` +
+    `cardBg:${otherBg === leaderBg ? 'matches .leader-card' : otherBg + ' vs ' + leaderBg}  ` +
+    `soundOnButton: shown:${before} clearsAfterUse:${!after}`)
+  await page.close()
+}
+
 await browser.close()
 console.log(`\n--- ${allLinks.size} distinct outbound links ---`)
 ;[...allLinks].sort().forEach((l) => console.log('  ' + l))

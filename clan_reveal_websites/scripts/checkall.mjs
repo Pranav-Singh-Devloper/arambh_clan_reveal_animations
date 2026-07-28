@@ -153,6 +153,27 @@ if (!nf) failures++
 await p.screenshot({ path: `${OUT}/notfound.png` })
 await p.close()
 
+/* Object.prototype keys as route codes. ROUTES is a plain object literal, so a
+   bare ROUTES[code] returned truthy for these and the page white-screened on
+   clan.color.replace(). Nobody types them; crawlers and mangled links produce
+   them, and a blank page on a launch URL is the worst possible failure mode. */
+for (const code of ['constructor', 'toString', 'valueOf', '__proto__']) {
+  const q = await browser.newPage()
+  const errs = []
+  q.on('pageerror', (e) => errs.push(e.message))
+  await q.goto(`${BASE}/r/${code}`, { waitUntil: 'networkidle2' })
+  await new Promise((r) => setTimeout(r, 700))
+  const got = await q.evaluate(() => ({
+    nf: !!document.querySelector('.notfound'),
+    blank: document.getElementById('root').children.length === 0,
+  }))
+  const ok = got.nf && !got.blank && !errs.length
+  if (!ok) failures++
+  console.log(`${ok ? 'PASS' : 'FAIL'}  /r/${code.padEnd(11)} -> not-found, not a white screen` +
+    (errs.length ? `   ERRORS: ${errs[0]}` : ''))
+  await q.close()
+}
+
 // mobile
 const m = await browser.newPage()
 await m.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true })

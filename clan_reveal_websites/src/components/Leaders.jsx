@@ -29,13 +29,13 @@ const isReal = (url) => !!url && url !== '#' && url.trim() !== ''
    than storing HTML: a bio is text about a real, named student, and it should
    never be able to inject markup into the page. Odd indices of a split on a
    capturing group are the captured runs, so they are the emphasised ones. */
-function emphasise(text) {
+export function emphasise(text) {
   return String(text)
     .split(/\*\*([\s\S]+?)\*\*/g)
     .map((part, i) => (i % 2 ? <strong key={i}>{part}</strong> : part))
 }
 
-function LeaderLinks({ leader }) {
+export function LeaderLinks({ leader }) {
   // '#' is truthy, so it has to be excluded explicitly - otherwise an unfilled
   // placeholder ships as an icon that goes nowhere
   const links = ['instagram', 'linkedin'].filter((k) => isReal(leader[k]))
@@ -61,7 +61,7 @@ const QUINT_OUT = [0.22, 1, 0.36, 1]
 
 /* Falls back to a monogram whenever a leader has no photo yet, so the section
    looks finished before the cut-outs land and never shows a broken image. */
-function initials(name) {
+export function initials(name) {
   return name
     .split(/\s+/)
     .filter(Boolean)

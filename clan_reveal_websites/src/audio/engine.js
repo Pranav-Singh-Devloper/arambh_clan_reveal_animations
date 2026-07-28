@@ -87,11 +87,138 @@ function buildIR(context, dur = 2.8, rt60 = 1.9) {
   return ir
 }
 
+/* ---------------------------------------------------------------------------
+   ROUTE TO THE LOUDSPEAKER, NOT THE EARPIECE.
+
+   On an iPhone this page came out of the receiver - the little slit above the
+   screen you hold to your ear on a call - instead of the bottom loudspeaker.
+   Quiet, thin, and pointed away from the room, which is the opposite of what a
+   reveal built around its sound needs.
+
+   The cause is the audio session type. iOS decides where audio goes from what
+   the page declares itself to be, and the default is `auto`. A page that plays
+   through the Web Audio API and has no <audio> or <video> element gives Safari
+   nothing to infer from, and `auto` resolves to an ambient-style session: it
+   respects the ringer switch and it is allowed to use the receiver.
+
+   `playback` declares this as media - the same class as a video or a music
+   player - which routes to the main loudspeaker and ignores the silent switch.
+   That second effect is deliberate here, not a side effect to apologise for:
+   the volume gate tells the visitor to turn the volume to 100% and asks them
+   to press a button, so a phone left on silent should not swallow the thing
+   they just opted into. Nothing here touches the level itself, so the hardware
+   volume buttons stay the only volume control, exactly as asked.
+
+   Set BEFORE the AudioContext exists. WebKit consults the override on the
+   FIRST category computation, so setting it first means the session is never
+   configured as ambient even momentarily. It needs no user gesture, so it also
+   runs once at module load, below - the call inside unlock() is the one that
+   matters, this is just belt and braces.
+
+   Three consequences, all accepted deliberately:
+
+   1. The ringer/silent switch no longer silences the page. Intended. The gate
+      tells the visitor to turn the volume to 100% and makes them press a
+      button; a phone left on silent should not swallow what they opted into.
+   2. It interrupts whatever else they were playing - Spotify, a podcast.
+      WebKit gives Playback no .mixWithOthers, so it is exclusive. Correct for
+      a 22-second piece built entirely around its own soundtrack.
+   3. The override is process-global and sticky - WebKit never clears it on
+      navigation. releaseAudioSession() below puts it back to 'auto' when the
+      visitor leaves the clan, so this page does not quietly change how audio
+      behaves for every other tab afterwards.
+
+   It silently no-ops inside an iframe without a microphone permissions policy,
+   which is fine: these pages are always opened top-level from a mail link.
+
+   Note this does NOT stop iOS suspending the context on backgrounding
+   (WebKit bug 261554), so the visibilitychange -> resume handler below is
+   still load-bearing.
+   --------------------------------------------------------------------------- */
+function claimLoudspeaker() {
+  // Audio Session API - Safari 16.4+ (iOS 16.4, March 2023). Absent elsewhere,
+  // where this problem does not arise, so a plain guard is the whole story.
+  try {
+    if (typeof navigator !== 'undefined' && 'audioSession' in navigator && navigator.audioSession) {
+      navigator.audioSession.type = 'playback'
+      return true
+    }
+  } catch { /* setter can throw on partial implementations - never fatal */ }
+  return false
+}
+
+/** Hand the shared session back. The override outlives this page otherwise. */
+export function releaseAudioSession() {
+  try {
+    if (typeof navigator !== 'undefined' && 'audioSession' in navigator && navigator.audioSession) {
+      navigator.audioSession.type = 'auto'
+    }
+  } catch { /* nothing to do */ }
+  if (sessionAnchor) {
+    try { sessionAnchor.pause() } catch { /* already gone */ }
+    sessionAnchor = null
+  }
+}
+
+/* Fallback for iOS before 16.4, which predates the Audio Session API.
+
+   The only lever back then was an <audio> element: once one has actually
+   played, iOS classifies the page as media playback and Web Audio follows it
+   to the loudspeaker. So a silent looping clip is started and left running as
+   a session anchor. It is genuine digital silence - 8-bit PCM at 128 - rather
+   than a normal file at volume 0, because `volume` is read-only on iOS and
+   would have done nothing.
+
+   Gated to iOS on purpose. Desktop browsers have no such routing problem, and
+   leaving a hidden looping element running on every machine to fix a phone
+   would be a worse bug than the one being fixed. */
+const IS_IOS = typeof navigator !== 'undefined' && (
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)   // iPadOS
+)
+
+const SILENCE = 'data:audio/wav;base64,UklGRqQMAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YYAMAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA=='
+
+let sessionAnchor = null
+
+function primeSessionWithSilentElement() {
+  if (!IS_IOS || sessionAnchor) return
+  try {
+    sessionAnchor = new Audio(SILENCE)
+    sessionAnchor.loop = true
+    /* Deliberately NOT muted, and volume is left at 1.
+       WebKit's computeCanProduceAudio() returns false when an element is muted
+       or at volume 0, and an element that cannot produce audio is invisible to
+       updateSessionState() - so the muted keep-alive everyone reaches for first
+       holds no category at all and fixes nothing. The silence has to be in the
+       samples, which is why this is a real PCM file of 128s rather than a
+       normal clip turned down. (No playsinline here either: that is a <video>
+       attribute and does nothing on <audio>.) */
+    const played = sessionAnchor.play()
+    if (played && played.catch) played.catch(() => { sessionAnchor = null })
+  } catch {
+    sessionAnchor = null
+  }
+}
+
+/* Declared at import, before anything can construct an AudioContext. */
+claimLoudspeaker()
+
 export function unlock() {
+  const declared = claimLoudspeaker()
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext
     if (!AC) return null
-    ctx = new AC({ latencyHint: 'interactive' })
+    /* latencyHint 'playback' rather than 'interactive'. Nothing here responds
+       to input - every sound is scheduled seconds ahead on the AudioContext
+       clock - so asking for the smallest possible buffer buys nothing and
+       costs battery and underrun headroom on a phone.
+       It does NOT affect routing: WebKit parses latencyHint into
+       AudioContextOptions and then never reads it (AudioContext::create still
+       carries a FIXME about where it should go). The speaker fix is entirely
+       claimLoudspeaker() above - do not treat this line as part of it. */
+    ctx = new AC({ latencyHint: 'playback' })
+    if (!declared) primeSessionWithSilentElement()
     noiseBuf = makeNoise(ctx)
 
     program = ctx.createGain()

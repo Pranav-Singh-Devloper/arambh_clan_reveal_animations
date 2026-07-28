@@ -1286,11 +1286,20 @@ a { color: inherit; }
     0 30px 60px -22px rgba(28, 26, 23, 0.4);
 }
 
+/* Every card surface in the light theme. .other-card MUST be in this list:
+   the base rule uses var(--surface), which in light is rgba(28,26,23,0.028) -
+   a 2.8% wash that is invisible against the cream page. The dark theme looks
+   correct either way, which is exactly how a new card type ships as a ghost
+   panel without anyone noticing. If you add another card, add it here too. */
 :root[data-theme='light'] .leader-card,
+:root[data-theme='light'] .other-card,
 :root[data-theme='light'] .social-card {
   background: #FFFDF9;
   border-color: rgba(28, 26, 23, 0.1);
 }
+
+/* ...but not the top edge, which carries the leader's own clan colour. */
+:root[data-theme='light'] .other-card { border-top-color: var(--card-clan, var(--clan)); }
 
 :root[data-theme='light'] .leader-stage::before {
   background: radial-gradient(circle at 50% 62%, var(--clan-soft) 0%, transparent 64%);
@@ -1306,4 +1315,219 @@ a { color: inherit; }
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* ---------- the other clans' leaders ---------- */
+
+/* Link off the clan page, and the way back from the other-leads page. */
+.other-cta { padding-top: 0; text-align: center; }
+
+.other-cta-line {
+  font-family: var(--serif);
+  font-optical-sizing: none;
+  font-variation-settings: 'opsz' var(--opsz, 14);
+  font-size: clamp(16px, 3.6vw, 22px);
+  font-weight: 400;
+  color: var(--fg-muted);
+  margin: 0 0 clamp(18px, 3.4vw, 26px);
+}
+
+.other-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: clamp(13px, 2.6vw, 16px) clamp(22px, 4.4vw, 30px);
+  border: 1px solid var(--clan);
+  border-radius: 2px;
+  color: var(--clan);
+  background: transparent;
+  font-family: var(--sans);
+  font-size: clamp(11px, 2.6vw, 12.5px);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background 0.35s ease, color 0.35s ease;
+}
+
+.other-cta-btn:hover { background: var(--clan); color: #fff; }
+
+.other-head {
+  padding: clamp(54px, 10vw, 96px) 18px 0;
+  text-align: center;
+}
+
+/* The spectrum sits at the TOP of this page rather than under a hero, so it
+   needs its own top margin - .spectrum-wrap's is tuned for sitting under the
+   welcome line. */
+.other-head .spectrum-wrap { margin-top: 0; }
+
+.sound-on {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: clamp(18px, 3.4vw, 26px);
+  padding: 10px 18px;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.sound-on:hover { color: var(--clan); border-color: var(--clan); }
+
+.other-section { padding-top: clamp(38px, 7vw, 64px); }
+
+/* Three across on a laptop, one on a phone.
+
+   Three of the four pages carry FIVE cards, not six, so the final row is a
+   pair; only Vijaya's is an exact 3 x 2. A short final row left alone sits
+   hard against the left edge and reads as a layout fault rather than a set.
+
+   This is flex, not grid, and deliberately so. The grid version needed a
+   :nth-last-child rule that re-declared the card width to span two columns,
+   and that width had to be computed from the container - I wrote it against
+   max-width (1180px) instead of the actual width, so at any narrower viewport
+   the orphan row came out 376px against its neighbours' 343px and sat 168px
+   right of centre. flex-wrap plus justify-content:center centres a short row
+   by construction, with no width arithmetic to get wrong. Rows still stretch
+   to equal height, because align-items defaults to stretch. */
+.other-grid {
+  --gap: clamp(18px, 3vw, 26px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--gap);
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.other-grid > * { flex: 0 1 100%; }
+
+/* two across between phone and laptop - one long column reads as a list */
+@media (min-width: 620px) {
+  .other-grid > * { flex-basis: calc((100% - var(--gap)) / 2); }
+}
+
+@media (min-width: 1000px) {
+  .other-grid > * { flex-basis: calc((100% - 2 * var(--gap)) / 3); }
+}
+
+.other-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  background: var(--surface);
+  overflow: hidden;
+  /* No height here. A flex line already stretches its items to the tallest of
+     the row (align-items defaults to stretch), which is what makes a leader
+     with three pointers line up along the bottom with one who has six. Setting
+     height:100% actively BREAKS that: it is a definite height, so it opts the
+     card out of stretching and each card collapses to its own content. */
+}
+
+/* Each card wears its OWN clan's colour, taken from --card-clan set inline.
+   The page around it is painted in the visitor's clan colour, and a hairline
+   in the wrong colour would quietly miscredit the leader. */
+.other-card { border-top: 2px solid var(--card-clan, var(--clan)); }
+
+.other-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(210px, 44vw, 260px);
+  overflow: hidden;
+  background: var(--stage-bg);
+}
+
+.other-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse closest-side at 50% 50%,
+    var(--card-soft, var(--clan-glow)) 0%, transparent 72%);
+  opacity: 0.4;
+}
+
+.other-photo {
+  position: relative;
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 12px 22px var(--photo-shadow));
+  /* Same bottom dissolve as the big cards. Applied to the shadow too, or the
+     shadow outlines the cut the mask just hid. */
+  mask-image: linear-gradient(to bottom, #000 0%, #000 66%,
+    rgba(0, 0, 0, 0.72) 82%, rgba(0, 0, 0, 0.22) 93%, transparent 100%);
+}
+
+.other-stage.is-monogram .monogram {
+  position: relative;
+  width: clamp(88px, 18vw, 112px);
+  height: clamp(88px, 18vw, 112px);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--card-clan, var(--clan));
+  color: #fff;
+  font-family: var(--serif);
+  font-optical-sizing: none;
+  font-variation-settings: 'opsz' var(--opsz, 14);
+  font-size: clamp(30px, 6vw, 38px);
+  font-weight: 400;
+}
+
+.other-body {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(20px, 3.6vw, 26px);
+}
+
+.other-clan-chip {
+  align-self: flex-start;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--card-clan, var(--clan));
+  border-radius: 2px;
+  color: var(--card-clan, var(--clan));
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* The role chip inherits the page's clan colour from the shared rule, which
+   would put the visitor's colour on someone else's card. */
+.other-card .role-chip { color: var(--card-clan, var(--clan)); border-color: var(--card-clan, var(--clan)); }
+
+.other-body h3 {
+  font-family: var(--serif);
+  font-optical-sizing: none;
+  font-variation-settings: 'opsz' var(--opsz, 14);
+  font-size: clamp(21px, 4.4vw, 26px);
+  font-weight: 500;
+  line-height: 1.15;
+  margin: 12px 0 0;
+}
+
+.other-points {
+  margin-top: clamp(14px, 2.6vw, 18px);
+  font-size: clamp(12.5px, 3vw, 13.5px);
+}
+
+.other-points li { padding: clamp(9px, 1.8vw, 11px) 0; }
+
+.other-back {
+  margin-top: clamp(40px, 7vw, 64px);
+  text-align: center;
 }

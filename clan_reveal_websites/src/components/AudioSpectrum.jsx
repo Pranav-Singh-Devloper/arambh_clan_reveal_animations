@@ -34,6 +34,11 @@ export default function AudioSpectrum({ color, className = '' }) {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     let w = 0, h = 0, bars = 0, edges = null
+    /* Reused across frames. This was allocated inside draw(), which is a 1 KB
+       Uint8Array every frame - 60/s, and there are two of these on the page
+       now that other-leads also draws one. Pure garbage for the collector to
+       sweep during the one animation that must not stutter. */
+    let data = null
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -73,7 +78,7 @@ export default function AudioSpectrum({ color, className = '' }) {
 
       if (analyser) {
         const bins = analyser.frequencyBinCount
-        const data = new Uint8Array(bins)
+        if (!data || data.length !== bins) data = new Uint8Array(bins)
         analyser.getByteFrequencyData(data)
         const nyquist = (A.context()?.sampleRate || 44100) / 2
 

@@ -63,6 +63,91 @@ third party between a student and the payoff frame, and the logo one is on the
 volume gate, the very first thing anyone sees. The mails still use the GitHub
 URLs, because email has no bundler.
 
+## iOS was playing through the earpiece
+
+On an iPhone the whole reveal came out of the **receiver** - the slit above the
+screen you hold to your ear on a call - rather than the bottom loudspeaker.
+Quiet, thin, and pointed away from the room.
+
+iOS decides the output route from the audio-session category, and a page that
+plays only through the Web Audio API with no `<audio>` or `<video>` element
+gives WebKit nothing to infer from. The default `auto` resolves to an ambient,
+mixable category, which asserts no route of its own and is allowed to sit on
+the receiver. `navigator.audioSession.type = 'playback'` maps to
+`AVAudioSessionCategoryPlayback`, an exclusive output category whose default
+route is the main loudspeaker.
+
+Details that matter, all in `claimLoudspeaker()` in `src/audio/engine.js`:
+
+- **Set before the AudioContext is constructed.** WebKit consults the override
+  on the first category computation, so the session is never configured as
+  ambient even briefly. It needs no user gesture, so it also runs once at
+  module load.
+- **Reset to `'auto'` when the visitor leaves the clan.** The override is
+  process-global and WebKit never clears it on navigation, so without
+  `releaseAudioSession()` this page would keep dictating audio behaviour to
+  other tabs afterwards.
+- **iOS below 16.4** predates the API and falls back to a looping silent
+  `<audio>` element. It is genuine PCM silence at full volume, *not* a normal
+  clip muted or turned down: WebKit's `computeCanProduceAudio()` returns false
+  for a muted or zero-volume element, so the muted keep-alive everyone reaches
+  for first holds no category at all. Gated to iOS, because leaving a looping
+  element running on every desktop to fix a phone is the worse bug.
+- **`latencyHint: 'playback'` is not part of the fix.** It is the right hint for
+  audio scheduled seconds ahead, but WebKit parses it and never reads it.
+
+Two accepted side effects: the ringer switch no longer silences the page (the
+gate tells the visitor to turn the volume up and makes them press a button), and
+it interrupts Spotify or a podcast, because Playback gets no `mixWithOthers`.
+Nothing touches gain, so the hardware volume buttons remain the only volume
+control.
+
+`deploycheck.mjs` shims `navigator.audioSession` and asserts the call happens,
+with the right value, before the AudioContext. **It cannot prove the sound
+leaves the loudspeaker** - speaker-vs-receiver routing is unspecified UA
+behaviour and needs a physical iPhone.
+
+## /r/:code/other-leads
+
+The other three clans' leaders, three across on a laptop and one on a phone.
+Card counts differ per page, which is why the grid needs thought:
+
+| Page | Other leaders |
+|---|---|
+| Rajputana | Vijaya 1 + Maratha 2 + Chola 2 = **5** |
+| Vijaya | Rajputana 2 + Maratha 2 + Chola 2 = **6** |
+| Maratha | Rajputana 2 + Vijaya 1 + Chola 2 = **5** |
+| Chola | Rajputana 2 + Vijaya 1 + Maratha 2 = **5** |
+
+Only Vijaya's is an exact 3x2. The other three are a 3 + 2, and the short final
+row is centred. That is **flex, not grid**: the grid version needed a
+`:nth-last-child` rule that re-declared the card width to span two columns, and
+that width had to be computed from the container. Written against `max-width`
+instead of the real width, it came out 376px against its neighbours' 343px and
+168px right of centre at any narrower viewport. `flex-wrap` plus
+`justify-content: center` centres a short row by construction. Cards also carry
+**no height** - a flex line stretches its items to the tallest of the row, and
+setting `height: 100%` is a definite height that opts them out of exactly that.
+
+Each card wears its **own** clan's colour via `--card-clan`, not the page's.
+
+### Gapless music across the two routes
+
+`/r/:code` and `/r/:code/other-leads` are children of one **layout route**, not
+siblings. `ClanLayout` owns the audio teardown and the reveal stage, so:
+
+- moving between the routes never unmounts the thing that calls `stopMusic()`;
+- coming back does not remount at stage `gate` and replay 22 seconds.
+
+Proven on the real audio graph rather than on anything the UI claims:
+`AudioBufferSourceNode.start`/`.stop` are hooked and the analyser is sampled
+either side of each navigation. **1 music `start()`, 0 `stop()`s, 0 silent
+frames** across going to the page and back.
+
+A direct visit to `/other-leads` skips the build-up (a shared link should not
+make someone sit through a reveal for a clan they may not be in) and offers a
+"turn the sound on" button, since no browser allows audio without a gesture.
+
 ## Routes
 
 Codes are meaningless on purpose: `/r/3184` gives away nothing, and the student
