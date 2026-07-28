@@ -49,6 +49,25 @@ import kushagrahPhoto from '../about_leads/images/web/kushagrah.webp'
 import aabirPhoto from '../about_leads/images/web/aabir_sarkar.webp'
 import deepanshuPhoto from '../about_leads/images/web/deepanshu_chaudhary.webp'
 
+/* The music bed, per clan.
+
+   Maratha runs Lose My Mind; the other three run Lush Life. Re-encoded to
+   120 kbps to match, because the source was 192 kbps / 4.9 MB and this is a
+   background bed heard on a phone speaker - the extra bitrate bought nothing
+   audible and cost two megabytes on the one connection that cannot spare them.
+
+   `bass` is a low-shelf lift in dB, applied to that track alone. Masters are
+   not interchangeable: Lush Life is a bright TikTok mashup that thins out on a
+   phone speaker and wants weight underneath it, while Lose My Mind already
+   carries its own low end and would only turn muddy. */
+import lushLife from '../audio/Lush Life x Unforgettable (Altego Tiktok Remix Mashup) Zara Larsson x French Montana.mp3'
+import loseMyMind from '../audio/lose_my_mind.mp3'
+
+export const MUSIC = {
+  lushLife: { src: lushLife, bass: 3.5 },
+  loseMyMind: { src: loseMyMind, bass: 0 },
+}
+
 /* 'dark' or 'light'. Append ?theme=light (or ?theme=dark) to any URL to preview
    the other one without changing this. */
 export const THEME = 'light'
@@ -109,6 +128,7 @@ export const CLANS = {
     deep: '#01421A',
     glow: 'rgba(3, 146, 58, 0.55)',
     warCry: 'राजपूताना राज करेगा!',
+    music: MUSIC.lushLife,
     leaders: [
       {
         name: 'Nakul Jaglan',
@@ -159,6 +179,7 @@ export const CLANS = {
     deep: '#6B4600',
     glow: 'rgba(255, 175, 2, 0.55)',
     warCry: 'विजया!',
+    music: MUSIC.lushLife,
     // Vijaya has a Chief only - no Deputy. The card is full width like every
     // other, so it never reads as a lone shrunken box.
     leaders: [
@@ -192,6 +213,7 @@ export const CLANS = {
     deep: '#5E1D00',
     glow: 'rgba(241, 80, 2, 0.55)',
     warCry: 'For Victory, For Glory, For Maratha, जय मराठा!',
+    music: MUSIC.loseMyMind,
     leaders: [
       {
         name: 'Aaryan Yadav',
@@ -238,6 +260,7 @@ export const CLANS = {
     deep: '#001C42',
     glow: 'rgba(0, 74, 173, 0.60)',
     warCry: 'हर हर महादेव!',
+    music: MUSIC.lushLife,
     leaders: [
       {
         name: 'Aabir Sarkar',

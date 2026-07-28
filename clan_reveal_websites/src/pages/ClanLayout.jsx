@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { resolveCode, AUDIENCE_COPY } from '../data/clans'
 import * as A from '../audio/engine'
 import { fireCannons, sustainedShower } from '../lib/celebrate'
-import { isPlaying, preloadMusic, startMusic, stopMusic } from '../audio/music'
+import { isPlaying, prefetchMusic, preloadMusic, startMusic, stopMusic } from '../audio/music'
 import VolumeGate from '../components/VolumeGate'
 import RevealSequence from '../components/RevealSequence'
 import NotFound from './NotFound'
@@ -92,6 +92,13 @@ export default function ClanLayout() {
       : 'Your Clan Awaits | Rishihood University'
   }, [clan, stage])
 
+  /* Start the download on page load, not on the Begin press. Fetching bytes
+     needs no user gesture; only decoding does. This buys however long the
+     visitor spends reading the gate and turning their volume up, which is free
+     runway in front of the 22-second build-up - and it matters most for
+     Maratha, whose bed is three times the size of the others. */
+  useEffect(() => { if (clan) prefetchMusic(clan.music.src) }, [clan])
+
   // lock scrolling until the reveal has landed
   useEffect(() => {
     document.body.classList.toggle('locked', stage !== 'revealed')
@@ -119,7 +126,7 @@ export default function ClanLayout() {
        the bed is ~890 KB. Warming them here costs nothing and is the
        difference between a clean reveal and one that pops in late on a phone.
        decodeAudioData needs a context, so this has to follow unlock(). */
-    preloadMusic()
+    preloadMusic(clan.music.src)
     new Image().src = clan.crest
     // honour reduced-motion by skipping straight past the build-up
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -128,7 +135,7 @@ export default function ClanLayout() {
       if (!celebrated.current) {
         celebrated.current = true
         fireCannons([clan.color, '#C7A75C', '#F3EAD9'], { soft: true })
-        startMusic({ delay: 1.2, fade: 3 })
+        startMusic({ ...clan.music, delay: 1.2, fade: 3 })
         setMusicOn(true)
       }
       return
@@ -148,7 +155,7 @@ export default function ClanLayout() {
     // The bed starts rising at +4.5s and takes 4s to reach level, so it is
     // already coming up while the ovation (ends +5.9s) and the reveal chord
     // (decays to +8s) are still dying away. Nothing ever hands over in silence.
-    startMusic({ delay: 4.5, fade: 4 })
+    startMusic({ ...clan.music, delay: 4.5, fade: 4 })
     setMusicOn(true)
   }, [clan])
 
@@ -160,7 +167,7 @@ export default function ClanLayout() {
     if (!celebrated.current) {
       celebrated.current = true
       fireCannons([clan.color, '#C7A75C', '#F3EAD9'])
-      startMusic({ delay: 0.8, fade: 2.5 })
+      startMusic({ ...clan.music, delay: 0.8, fade: 2.5 })
       setMusicOn(true)
     }
   }, [clan])
@@ -178,9 +185,9 @@ export default function ClanLayout() {
   const soundOn = useCallback(() => {
     A.unlock()
     celebrated.current = true
-    startMusic({ delay: 0.15, fade: 2.5 })
+    startMusic({ ...clan.music, delay: 0.15, fade: 2.5 })
     setMusicOn(true)
-  }, [])
+  }, [clan])
 
   if (!clan) return <NotFound />
 

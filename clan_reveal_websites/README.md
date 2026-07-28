@@ -63,6 +63,45 @@ third party between a student and the payoff frame, and the logo one is on the
 volume gate, the very first thing anyone sees. The mails still use the GitHub
 URLs, because email has no bundler.
 
+## The music bed is per clan
+
+| Clan | Track | Size | Bass lift |
+|---|---|---|---|
+| Maratha | Lose My Mind | 2.86 MB / 209 s | none |
+| Rajputana, Vijaya, Chola | Lush Life x Unforgettable | 0.89 MB / 61 s | +3.5 dB shelf @ 110 Hz |
+
+Lose My Mind arrived at 192 kbps / 4.9 MB and was re-encoded to 120 kbps to
+match the other track. This is a background bed heard on a phone speaker: the
+extra bitrate bought nothing audible and cost two megabytes on exactly the
+connection that cannot spare them.
+
+The bass lift is **per track, not on the bus**. Masters are not
+interchangeable: Lush Life is a bright mashup that thins out on a phone speaker
+and wants weight under it, while Lose My Mind already carries its own low end
+and would only turn muddy. It is a low **shelf**, not a peak, because a narrow
+push at 80 Hz reads as a boom on a speaker that cannot reproduce it anyway;
+110 Hz sits under the vocal and above the sub a phone will not render.
+
+### Downloads start on page load, not on the Begin press
+
+Fetching bytes needs no user gesture; only `decodeAudioData` does. So the two
+are split: `prefetchMusic()` starts the download when the page loads, and
+`preloadMusic()` decodes after unlock. That buys however long the visitor
+spends reading the gate and turning their volume up, on top of the 22-second
+build-up.
+
+Measured on **Fast 3G with a 4x CPU throttle**:
+
+| Clan | bed ready | needed | slack |
+|---|---|---|---|
+| Maratha (2.86 MB) | 24.0 s | 36.6 s | 12.6 s |
+| Chola (0.89 MB) | 13.4 s | 35.8 s | 22.4 s |
+
+**On Slow 3G, Maratha's bed will arrive late** - roughly 58 s to download
+against a ~36 s runway. It degrades gracefully (the bed simply fades in when it
+is ready; nothing breaks), but if that matters, trimming the track to ~90 s
+would halve it and it loops anyway.
+
 ## Output level
 
 Measured at `ctx.destination`, post-waveshaper and post-limiter, over a full

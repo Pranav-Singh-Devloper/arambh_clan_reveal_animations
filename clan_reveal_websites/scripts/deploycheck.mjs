@@ -527,15 +527,14 @@ for (const [code, clan, want] of [['3184', 'Rajputana', 5], ['5027', 'Vijaya', 6
     .map((c) => `${c.querySelector('.other-clan-chip').textContent}:${getComputedStyle(c).borderTopColor}`))
   const distinctClanColours = new Set(colours.map((c) => c.split(':')[1])).size >= 2
 
-  /* card.recoloured is the specificity regression: the theme block carries
-     `:root[data-theme='light'] .other-card { border-color }` at (0,3,0), so a
-     bare `.other-card:hover` at (0,2,0) never recoloured on the theme that
-     actually ships. Asserted separately from the lift so the two cannot mask
-     each other. */
-  const ok = card.moved && card.recoloured && photo.moved && icon.recoloured && btn.moved && distinctClanColours
+  /* The card must NOT recolour its border any more - that was dropped for a
+     shadow, because recolouring only three sides (the fourth carries the
+     leader's own clan colour) looked like a rendering fault. The specificity
+     trap it exposed still applies to .social-card, which is asserted below. */
+  const ok = card.moved && !card.recoloured && photo.moved && icon.recoloured && btn.moved && distinctClanColours
   if (!ok) failures++
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${'hover states respond'.padEnd(38)} ` +
-    `card:${card.moved}/${card.recoloured} portrait:${photo.moved} icon:${icon.recoloured} button:${btn.moved} ` +
+    `card:lift=${card.moved},borderUnchanged=${!card.recoloured} portrait:${photo.moved} icon:${icon.recoloured} button:${btn.moved} ` +
     `perCardClanColoursIntact:${distinctClanColours}`)
 
   // reduced motion must beat the !important hover transforms
