@@ -148,6 +148,45 @@ A direct visit to `/other-leads` skips the build-up (a shared link should not
 make someone sit through a reveal for a clan they may not be in) and offers a
 "turn the sound on" button, since no browser allows audio without a gesture.
 
+## Interaction states
+
+Everything hoverable is in `global.css` under INTERACTION STATES. Two rules:
+
+- **Nothing moves more than 3px** and nothing changes colour except toward a
+  colour the page already owns. This page was once rejected as looking cheap,
+  and what reads as cheap in a hover is always the same: a glow, a gradient
+  appearing from nowhere, a spring, a card that leaps.
+- **Everything visual is inside `@media (hover: hover)`.** Most visitors are on
+  a phone, where `:hover` either never fires or latches after a tap and stays.
+  Nothing is hover-only; no information appears on hover that is not already
+  on screen. Focus rings sit outside that block, so keyboard users on a touch
+  screen still get them.
+
+### The `!important` on the card transforms is load-bearing
+
+`.leader-card`, `.other-card`, `.leader-photo`, `.monogram` and `.social-card`
+are all framer-motion elements, and framer drives entrance animations by
+writing an **inline** transform, settling on `transform: none` once the card
+has animated in. An inline declaration outranks any selector, so without
+`!important` those hovers computed to nothing and the cards sat inert while the
+plain elements beside them responded. It was invisible by eye and only showed
+up under measurement. The reduced-motion block is also `!important` and comes
+later in the file, so it still wins.
+
+`deploycheck.mjs` asserts the card, portrait, icon and button all respond, that
+per-card clan colours survive a hover on a neighbour, and that reduced-motion
+suppresses the lift.
+
+### Scroll on navigation
+
+React Router does not reset scroll, and the link to the other-leads page sits
+at the very bottom of the clan page, so following it dropped the visitor two
+thirds down the new page with the heading already scrolled past. `ScrollToTop`
+in `App.jsx` resets on PUSH only: a browser Back or Forward keeps the position
+the visitor left, which is what the browser would do on its own. React Router
+v7 ships `<ScrollRestoration>` for this, but it needs a data router
+(`createBrowserRouter`) and this app uses `BrowserRouter`.
+
 ## Routes
 
 Codes are meaningless on purpose: `/r/3184` gives away nothing, and the student

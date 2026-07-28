@@ -1531,3 +1531,230 @@ a { color: inherit; }
   margin-top: clamp(40px, 7vw, 64px);
   text-align: center;
 }
+
+/* Programme and batch, under every leader's name. Set small, in the muted ink
+   and with wide tracking, so it reads as a caption on the name rather than
+   competing with it - the name is the thing, this is the footnote that tells a
+   first-year these are students two years ahead of them, not staff. */
+.programme {
+  margin: 8px 0 0;
+  font-family: var(--sans);
+  font-size: clamp(10px, 2.4vw, 11px);
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+
+/* ===========================================================================
+   INTERACTION STATES
+
+   Two rules govern everything below, both learned the hard way on this project.
+
+   The first is that this page was once rejected outright as looking cheap, and
+   the things that read as cheap in a hover are always the same: a glow, a
+   gradient that appears from nowhere, a spring, a card that leaps. So nothing
+   here moves more than 3px, nothing changes colour except toward a colour the
+   page already owns, and every curve is one of the two already in use.
+
+   The second is that hover is not a thing every visitor has. Most of the
+   people opening this are on a phone, where :hover either does not fire or
+   latches on after a tap and stays. Everything visual is inside
+   @media (hover: hover), and nothing is hover-only - no information appears on
+   hover that is not already on screen.
+   =========================================================================== */
+
+@media (hover: hover) and (pointer: fine) {
+
+  /* --- the cards ---------------------------------------------------------
+     The lift is 3px and the shadow arrives on a pseudo-element that
+     cross-fades, rather than animating box-shadow directly. Animating a large
+     blurred shadow forces a repaint of the whole card every frame; opacity on
+     a layer that already exists is a compositor job. On a page with six of
+     these that difference is the difference between smooth and not. */
+  .leader-card,
+  .other-card {
+    transition:
+      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.5s ease;
+  }
+
+  .leader-card::after,
+  .other-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    box-shadow: 0 18px 44px -20px var(--photo-shadow);
+  }
+
+  .other-card { position: relative; }
+
+  /* !important, and it is load-bearing rather than lazy. Every one of these
+     is a framer-motion element, and framer drives entrance animations by
+     writing an INLINE transform - it settles on `transform: none` once the
+     card has animated in. An inline declaration outranks any selector, so
+     without !important these hovers computed to nothing at all and the cards
+     sat inert while the plain, non-framer elements around them responded.
+     Overriding an inline style is the one thing !important is actually for.
+     The reduced-motion block at the end of this file is also !important and
+     comes later, so it still wins. */
+  .leader-card:hover,
+  .other-card:hover,
+  .leader-card:focus-within,
+  .other-card:focus-within {
+    transform: translateY(-3px) !important;
+    /* The other-cards each carry their OWN clan's colour on the top edge, so
+       this may only touch the other three sides. Setting `border-color` would
+       repaint all four and quietly reassign a Maratha leader to Chola blue. */
+    border-right-color: var(--card-clan, var(--clan));
+    border-bottom-color: var(--card-clan, var(--clan));
+    border-left-color: var(--card-clan, var(--clan));
+  }
+
+  .leader-card:hover::after,
+  .other-card:hover::after,
+  .leader-card:focus-within::after,
+  .other-card:focus-within::after { opacity: 1; }
+
+  /* The portrait drifts up a little inside its frame while the card lifts, so
+     the subject leads the movement rather than riding it. transform only: the
+     photos carry a mask-image bottom dissolve and a drop-shadow filter, and
+     anything that touched layout or filter would fight both. The stage already
+     clips, so nothing spills. */
+  .leader-photo,
+  .other-photo {
+    transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+
+  .leader-card:hover .leader-photo,
+  .other-card:hover .other-photo { transform: translateY(-6px) scale(1.02) !important; }
+
+  /* The monogram is a disc of flat clan colour, so it takes the same movement
+     but no scale - a growing circle reads as a button, which it is not. */
+  .monogram { transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+  .leader-card:hover .monogram,
+  .other-card:hover .monogram { transform: translateY(-5px) !important; }
+
+  /* --- the pointer list --------------------------------------------------
+     A hairline that fills with the clan colour, left to right, on the line
+     under the cursor. It is the cheapest possible affordance and it uses the
+     rule that is already there rather than adding anything. */
+  .leader-points li {
+    position: relative;
+    transition: color 0.35s ease;
+  }
+
+  .leader-points li::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    height: 1px;
+    width: 100%;
+    background: var(--card-clan, var(--clan));
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    opacity: 0.55;
+    transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .leader-points li:hover { color: var(--fg); }
+  .leader-points li:hover::after { transform: scaleX(1); }
+
+  /* --- icons and buttons -------------------------------------------------
+     The profile icons already lifted and changed colour. Filling them instead
+     makes them read as pressable rather than as decoration, which matters now
+     that one of the three is an email address someone may actually want. */
+  .leader-links a {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .leader-links a:hover,
+  .leader-links a:focus-visible {
+    color: #fff;
+    background: var(--card-clan, var(--clan));
+    border-color: var(--card-clan, var(--clan));
+  }
+
+  .social-card {
+    transition: border-color 0.4s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .social-card:hover { transform: translateY(-3px) !important; }
+  .social-card:hover .social-icon { color: var(--clan); border-color: var(--clan); }
+  .social-icon { transition: color 0.4s ease, border-color 0.4s ease; }
+
+  /* A slow sheen crossing the button, the same device the BEGIN button uses at
+     the start of the piece. Reusing it here is what ties the end of the page
+     back to the opening rather than inventing a second vocabulary. */
+  .other-cta-btn {
+    position: relative;
+    overflow: hidden;
+    transition: background 0.4s ease, color 0.4s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .other-cta-btn::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -60%;
+    width: 45%;
+    background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.28) 50%, transparent 65%);
+    transform: translateX(0);
+    transition: transform 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+
+  .other-cta-btn:hover { transform: translateY(-2px); }
+  .other-cta-btn:hover::after { transform: translateX(360%); }
+  .other-cta-btn svg { transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+  .other-cta-btn:hover svg { transform: translateX(3px); }
+  /* the back link points the other way, so its arrow should too */
+  .other-back .other-cta-btn:hover svg { transform: translateX(-3px); }
+
+  .mute-btn { transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.35s ease; }
+  .mute-btn:hover { transform: scale(1.08); border-color: var(--clan); }
+
+  .skip-btn { transition: color 0.3s ease, border-color 0.3s ease; }
+  .skip-btn:hover { color: var(--fg); border-color: var(--fg-muted); }
+
+  .footer-logo { transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+  .footer-logo:hover { transform: translateY(-2px); }
+}
+
+/* --- keyboard parity ------------------------------------------------------
+   Focus rings are drawn for everyone, not just mouse users, and outside the
+   @media block above - a keyboard user on a touch screen is a real person and
+   they get nothing from a hover-gated rule. */
+.leader-links a:focus-visible,
+.social-card:focus-visible,
+.other-cta-btn:focus-visible,
+.sound-on:focus-visible,
+.mute-btn:focus-visible,
+.skip-btn:focus-visible {
+  outline: 1px solid var(--clan);
+  outline-offset: 3px;
+}
+
+/* --- reduced motion -------------------------------------------------------
+   Colour still responds, because the affordance has to survive; only the
+   movement goes. */
+@media (prefers-reduced-motion: reduce) {
+  .leader-card, .other-card, .leader-photo, .other-photo, .monogram,
+  .social-card, .other-cta-btn, .mute-btn, .footer-logo,
+  .leader-points li::after, .other-cta-btn::after {
+    transition: none !important;
+    transform: none !important;
+  }
+  .leader-card:hover, .other-card:hover,
+  .leader-card:hover .leader-photo, .other-card:hover .other-photo,
+  .social-card:hover, .other-cta-btn:hover, .mute-btn:hover, .footer-logo:hover {
+    transform: none !important;
+  }
+}

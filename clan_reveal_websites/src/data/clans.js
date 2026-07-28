@@ -95,6 +95,12 @@ export const THEME = 'light'
    prose.
    --------------------------------------------------------------------------- */
 
+/* Every one of the seven is on the same programme in the same batch, so this
+   is a constant rather than the same string repeated seven times. If a future
+   cohort is mixed, move it onto the leader objects. Written with a middot, not
+   a hyphen: the copy across this project carries no dashes. */
+export const PROGRAMME = 'B.Tech in CS & AI · 2024/2028'
+
 export const CLANS = {
   rajputana: {
     name: 'Rajputana',
@@ -110,6 +116,7 @@ export const CLANS = {
         photo: nakulPhoto,
         instagram: 'https://instagram.com/nakul.jaglan',
         linkedin: 'https://linkedin.com/in/nakuljaglan',
+        email: 'nakul.2024@nst.rishihood.edu.in',
         points: [
           '**Founder** of a **B2B AI services startup**, building a company and leading a clan in the same year.',
           'Knows Rishihood’s policies **end to end**, and is the person to ask when you cannot work out how something is meant to work.',
@@ -122,6 +129,7 @@ export const CLANS = {
         photo: pranavPhoto,
         instagram: 'https://www.instagram.com/pranav_singh_0924/',
         linkedin: 'https://www.linkedin.com/in/pranav-singh-developer/',
+        email: 'pranav.singh2024@nst.rishihood.edu.in',
         points: [
           'Selected in Haryana’s delegation to the National Youth Festival 2025, where his idea was pitched directly in front of the **Prime Minister Shri Narendra Modi**.',
           'Represented Rishihood at the NVIDIA AI Summit in Mumbai and met **Jensen Huang**, the founder and chief executive of NVIDIA.',
@@ -160,6 +168,7 @@ export const CLANS = {
         photo: neelanshuPhoto,
         instagram: 'https://www.instagram.com/neelanshu_karn/',
         linkedin: 'https://www.linkedin.com/in/neelanshu-karn-05146130a/',
+        email: 'neelanshu.2024@nst.rishihood.edu.in',
         points: [
           'Currently doing an **international fellowship**, designing benchmarks and evaluation systems for frontier AI models.',
           '**Founder and President of SAST**, building Rishihood’s space ecosystem: a rover team, NASA Space Apps, and a **CubeSat prototype** showcased at **Bharat Mandapam**.',
@@ -190,6 +199,7 @@ export const CLANS = {
         photo: aaryanPhoto,
         instagram: 'https://www.instagram.com/__aaryan.yadav____/',
         linkedin: 'https://www.linkedin.com/in/aaryan-yadav-272b8a315/',
+        email: 'aaryan.yadav2024@nst.rishihood.edu.in',
         points: [
           '**Software development intern** with hands-on industry exposure across software engineering and AI, where the work is practical rather than theoretical.',
           '**District-level badminton and volleyball player**, with the habit of performing when the scoreline is against him.',
@@ -199,11 +209,12 @@ export const CLANS = {
         ],
       },
       {
-        name: 'Kushagrah',
+        name: 'Kushagra Maheshwari',
         role: 'Deputy Chief',
         photo: kushagrahPhoto,
         instagram: 'https://www.instagram.com/kushagrraa/',
         linkedin: 'https://www.linkedin.com/in/kushm11/',
+        email: 'kushagra.maheshwari2024@nst.rishihood.edu.in',
         points: [
           '**International Basketball Gold Medalist**. He has competed at the highest level and knows exactly what the preparation costs.',
           '**Third Runner-Up at the UCMAS International Abacus Competition**, with concentration and analytical problem-solving built from a young age.',
@@ -234,6 +245,7 @@ export const CLANS = {
         photo: aabirPhoto,
         instagram: 'https://www.instagram.com/aabirsarkar32/',
         linkedin: 'https://www.linkedin.com/in/aabir-sarkar-2aa54126b/',
+        email: 'aabir.sarkar2024@nst.rishihood.edu.in',
         points: [
           '**Winner of seven product hackathons**, a record built by turning an idea into a defensible product, repeatedly, under pressure.',
           '**Building two startups at once** while leading Chola, which tells you most of what you need to know about his standards.',
@@ -249,6 +261,7 @@ export const CLANS = {
         instagram: null, // he has no Instagram; null = does not exist, so it is
                         // dropped from the card AND not chased by content-check
         linkedin: 'https://in.linkedin.com/in/deepanshu-chaudhary17',
+        email: 'deepanshu.chaudhary2024@nst.rishihood.edu.in',
         points: [
           'Third-year B.Tech student in Computer Science and AI, and a **machine learning intern** already building in the field.',
           '**National-level Taekwondo athlete**, university footballer and marathon enthusiast. Whatever the next challenge is, he is already training for it.',

@@ -2,7 +2,7 @@ import { Link, useOutletContext, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 import { CLANS } from '../data/clans'
-import { emphasise, initials, LeaderLinks, SectionHead } from '../components/Leaders'
+import { emphasise, initials, LeaderLinks, Programme, SectionHead } from '../components/Leaders'
 import AudioSpectrum from '../components/AudioSpectrum'
 
 import LOGO from '../assets/rishihood_logo.png'
@@ -107,6 +107,7 @@ export default function OtherLeads() {
                   <span className="other-clan-chip">{c.name}</span>
                   <span className="role-chip">{l.role}</span>
                   <h3>{l.name}</h3>
+                  <Programme />
                   <LeaderLinks leader={l} />
 
                   {l.points?.length > 0 && (

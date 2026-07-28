@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import RuleLabel from './RuleLabel'
+import { PROGRAMME } from '../data/clans'
 
 /* Chief and Deputy Chief each carry their own two profiles. Rendered only when
    a real URL exists, so an unfilled placeholder can never ship as a dead link
@@ -20,7 +21,19 @@ const PROFILE_ICONS = {
       <path d="M7 10.4v6.2M7 7.4v.1M11.4 16.6v-6.2M11.4 13.1c0-1.5.9-2.4 2.3-2.4s2.3.9 2.3 2.4v3.5" />
     </svg>
   ),
+  email: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2.5" y="4.5" width="19" height="15" rx="2.5" />
+      <path d="m3.4 6.6 7.5 5.6c.65.49 1.55.49 2.2 0l7.5-5.6" />
+    </svg>
+  ),
 }
+
+/* Same shape as the profile URLs, but an address rather than a link, so the
+   '#'-style placeholder check does not apply - an address either exists or the
+   field is absent. */
+const MAIL_LABEL = { email: 'Email' }
 
 const isReal = (url) => !!url && url !== '#' && url.trim() !== ''
 
@@ -38,23 +51,37 @@ export function emphasise(text) {
 export function LeaderLinks({ leader }) {
   // '#' is truthy, so it has to be excluded explicitly - otherwise an unfilled
   // placeholder ships as an icon that goes nowhere
-  const links = ['instagram', 'linkedin'].filter((k) => isReal(leader[k]))
+  const links = ['instagram', 'linkedin', 'email'].filter((k) => isReal(leader[k]))
   if (!links.length) return null
   return (
     <div className="leader-links">
-      {links.map((k) => (
-        <a
-          key={k}
-          href={leader[k]}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`${leader.name} on ${k === 'instagram' ? 'Instagram' : 'LinkedIn'}`}
-        >
-          {PROFILE_ICONS[k]}
-        </a>
-      ))}
+      {links.map((k) => {
+        const mail = k === 'email'
+        return (
+          <a
+            key={k}
+            href={mail ? `mailto:${leader[k]}` : leader[k]}
+            // a mailto: must not open a blank tab that then sits there empty
+            target={mail ? undefined : '_blank'}
+            rel={mail ? undefined : 'noopener noreferrer'}
+            aria-label={mail
+              ? `Email ${leader.name} at ${leader[k]}`
+              : `${leader.name} on ${k === 'instagram' ? 'Instagram' : 'LinkedIn'}`}
+            title={mail ? leader[k] : undefined}
+          >
+            {PROFILE_ICONS[k]}
+          </a>
+        )
+      })}
     </div>
   )
+}
+
+/* The programme line. Every leader is on the same one, and seeing it under
+   their name is what tells a first-year these are students two years ahead of
+   them rather than staff. */
+export function Programme() {
+  return <p className="programme">{PROGRAMME}</p>
 }
 
 const QUINT_OUT = [0.22, 1, 0.36, 1]
@@ -170,6 +197,7 @@ export default function Leaders({ clan, copy }) {
                   {l.role}
                 </motion.span>
                 <h3>{l.name}</h3>
+                <Programme />
 
                 <LeaderLinks leader={l} />
 

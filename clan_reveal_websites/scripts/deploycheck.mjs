@@ -378,6 +378,72 @@ for (const [code, clan, want] of [['3184', 'Rajputana', 5], ['5027', 'Vijaya', 6
   await page.close()
 }
 
+/* 5. Interaction states. These are trivially easy to lose without noticing,
+      because framer-motion drives entrance animations by writing an INLINE
+      transform and settles on `transform: none` - which outranks any CSS
+      selector. The card hovers were silently inert for exactly that reason
+      until they were measured. Also asserts reduced-motion actually wins. */
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 1440, height: 1000 })
+  const probe = async (sel, child) => {
+    const read = () => page.evaluate(([s, c]) => {
+      const el = document.querySelector(s)
+      if (!el) return null
+      const t = c ? el.querySelector(c) : el
+      if (!t) return null
+      const cs = getComputedStyle(t)
+      return { tr: cs.transform, bg: cs.backgroundColor, br: cs.borderRightColor }
+    }, [sel, child])
+    const before = await read()
+    const handle = await page.$(child ? `${sel} ${child}` : sel)
+    if (!handle) return { moved: false, recoloured: false }
+    await handle.hover().catch(() => {})
+    await new Promise((r) => setTimeout(r, 800))
+    const after = await read()
+    await page.mouse.move(0, 0)
+    await new Promise((r) => setTimeout(r, 500))
+    if (!before || !after) return { moved: false, recoloured: false }
+    return { moved: before.tr !== after.tr, recoloured: before.bg !== after.bg || before.br !== after.br }
+  }
+
+  await page.goto(`${BASE}/r/9415/other-leads`, { waitUntil: 'networkidle2' })
+  await new Promise((r) => setTimeout(r, 2200))
+  const card = await probe('.other-card')
+  const photo = await probe('.other-card', '.other-photo')
+  const icon = await probe('.other-card', '.leader-links a')
+  const btn = await probe('.other-cta-btn')
+  // per-card clan colour must survive a hover on a neighbour
+  await (await page.$('.other-card')).hover()
+  await new Promise((r) => setTimeout(r, 700))
+  const colours = await page.evaluate(() => [...document.querySelectorAll('.other-card')]
+    .map((c) => `${c.querySelector('.other-clan-chip').textContent}:${getComputedStyle(c).borderTopColor}`))
+  const distinctClanColours = new Set(colours.map((c) => c.split(':')[1])).size >= 2
+
+  const ok = card.moved && photo.moved && icon.recoloured && btn.moved && distinctClanColours
+  if (!ok) failures++
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${'hover states respond'.padEnd(38)} ` +
+    `card:${card.moved} portrait:${photo.moved} icon:${icon.recoloured} button:${btn.moved} ` +
+    `perCardClanColoursIntact:${distinctClanColours}`)
+
+  // reduced motion must beat the !important hover transforms
+  const rm = await browser.newPage()
+  await rm.setViewport({ width: 1440, height: 1000 })
+  await rm.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+  await rm.goto(`${BASE}/r/9415/other-leads`, { waitUntil: 'networkidle2' })
+  await new Promise((r) => setTimeout(r, 2000))
+  const h = await rm.$('.other-card')
+  const t0 = await rm.evaluate((e) => getComputedStyle(e).transform, h)
+  await h.hover()
+  await new Promise((r) => setTimeout(r, 700))
+  const t1 = await rm.evaluate((e) => getComputedStyle(e).transform, h)
+  const still = t0 === t1
+  if (!still) failures++
+  console.log(`${still ? 'PASS' : 'FAIL'}  ${'reduced-motion suppresses the lift'.padEnd(38)} transform ${t0} -> ${t1}`)
+  await rm.close()
+  await page.close()
+}
+
 await browser.close()
 console.log(`\n--- ${allLinks.size} distinct outbound links ---`)
 ;[...allLinks].sort().forEach((l) => console.log('  ' + l))
