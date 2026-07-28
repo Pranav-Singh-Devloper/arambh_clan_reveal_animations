@@ -64,10 +64,6 @@ export default function VolumeGate({ onBegin }) {
 
         <motion.div variants={item} className="volume-card">
           <strong>Turn your volume up to 100%</strong>
-          <span>
-            This reveal is built around its sound. Headphones if you have them,
-            speakers if you don&apos;t. But do not do this on mute.
-          </span>
         </motion.div>
 
         <motion.button

@@ -378,6 +378,107 @@ for (const [code, clan, want] of [['3184', 'Rajputana', 5], ['5027', 'Vijaya', 6
   await page.close()
 }
 
+/* 4b. THE CLAN MUST NOT LEAK BEFORE THE REVEAL.
+      The route codes are opaque, the mails never name the clan, and the whole
+      22-second build-up exists to hold the answer back - all of which was
+      undone by document.title, which was set the moment the code resolved and
+      read "Chola | Rishihood Clans" while the visitor was still on the volume
+      gate. Checked across the entire build-up, not just at load.
+
+      This cannot be airtight and is not claimed to be: the JS bundle contains
+      all four clans and the code table, so devtools will always give it away.
+      The bar is that nobody is spoiled by ACCIDENT. */
+{
+  const page = await browser.newPage()
+  await page.setViewport({ width: 1440, height: 900 })
+  await page.goto(`${BASE}/r/9415`, { waitUntil: 'networkidle2' })
+  const sniff = () => page.evaluate(() => {
+    const clan = 'Chola'
+    const hits = []
+    if (document.title.includes(clan)) hits.push(`title="${document.title}"`)
+    document.querySelectorAll('[aria-label],[alt],[title]').forEach((e) => {
+      for (const a of ['aria-label', 'alt', 'title']) {
+        const v = e.getAttribute(a)
+        if (v && v.includes(clan)) hits.push(`${a}="${v}"`)
+      }
+    })
+    if (document.body.innerText.includes(clan)) hits.push('visible text')
+    return hits
+  })
+  const leaks = []
+  leaks.push(...await sniff())                      // at the gate
+  await page.evaluate(() => document.querySelector('.begin').click())
+  for (const wait of [1500, 8000, 9000]) {          // through the build-up
+    await new Promise((r) => setTimeout(r, wait))
+    leaks.push(...await sniff())
+  }
+  const ok = leaks.length === 0
+  if (!ok) failures++
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${'clan hidden until the reveal'.padEnd(38)} ` +
+    `pre-reveal leaks: ${leaks.length}${leaks.length ? '  ' + leaks.join(' | ') : ''}`)
+  await page.close()
+}
+
+/* 4c. OUTPUT LOUDNESS, and the one thing that would break Android.
+      Measured at ctx.destination, so post-waveshaper and post-limiter - the
+      actual samples the speaker receives. The master used to sit at 0.62 and
+      threw away 6.4 dB, which is inaudible on a laptop and very audible on a
+      phone at full system volume.
+
+      Also asserts getUserMedia is never called. Android has no equivalent of
+      the iOS ambient-session bug - it routes by audio MODE, and MODE_NORMAL
+      on STREAM_MUSIC is the main loudspeaker. The earpiece only appears in
+      communication mode, which Chrome enters for microphone capture. So the
+      single change that would put an Android phone on the earpiece is adding
+      getUserMedia, and this is the guard against someone doing that later. */
+{
+  const page = await browser.newPage()
+  await page.evaluateOnNewDocument(() => {
+    window.__pk = 0; window.__n = 0; window.__clip = 0; window.__mic = 0
+    if (navigator.mediaDevices) {
+      const g = navigator.mediaDevices.getUserMedia
+      navigator.mediaDevices.getUserMedia = function (...a) { window.__mic++; return g.apply(this, a) }
+    }
+    const origConnect = AudioNode.prototype.connect
+    AudioNode.prototype.connect = function (dest, ...rest) {
+      const out = origConnect.call(this, dest, ...rest)
+      try {
+        if (dest === this.context.destination && !window.__tapped) {
+          window.__tapped = true
+          const an = this.context.createAnalyser(); an.fftSize = 2048
+          origConnect.call(this, an)
+          const buf = new Uint8Array(an.fftSize)
+          const tick = () => {
+            an.getByteTimeDomainData(buf)
+            for (let i = 0; i < buf.length; i++) {
+              const a = Math.abs(buf[i] - 128) / 128
+              if (a > window.__pk) window.__pk = a
+              if (a > 0.995) window.__clip++
+              window.__n++
+            }
+            requestAnimationFrame(tick)
+          }
+          requestAnimationFrame(tick)
+        }
+      } catch (e) { /* ignore */ }
+      return out
+    }
+  })
+  await page.goto(`${BASE}/r/9415`, { waitUntil: 'networkidle2' })
+  await page.evaluate(() => document.querySelector('.begin').click())
+  await new Promise((r) => setTimeout(r, 600))
+  await page.evaluate(() => document.querySelector('.skip-btn')?.click())
+  await new Promise((r) => setTimeout(r, 15000))
+  const m = await page.evaluate(() => ({ pk: window.__pk, n: window.__n, clip: window.__clip, mic: window.__mic }))
+  const dbfs = m.pk > 0 ? 20 * Math.log10(m.pk) : -99
+  // loud enough to carry a phone speaker, but never actually hitting full scale
+  const ok = m.n > 0 && dbfs > -5 && m.clip === 0 && m.mic === 0
+  if (!ok) failures++
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${'output level + no mic (Android safe)'.padEnd(38)} ` +
+    `peak ${dbfs.toFixed(1)} dBFS (want > -5)  clipped:${m.clip}  getUserMedia:${m.mic}`)
+  await page.close()
+}
+
 /* 5. Interaction states. These are trivially easy to lose without noticing,
       because framer-motion drives entrance animations by writing an INLINE
       transform and settles on `transform: none` - which outranks any CSS
@@ -393,8 +494,14 @@ for (const [code, clan, want] of [['3184', 'Rajputana', 5], ['5027', 'Vijaya', 6
       const t = c ? el.querySelector(c) : el
       if (!t) return null
       const cs = getComputedStyle(t)
-      return { tr: cs.transform, bg: cs.backgroundColor, br: cs.borderRightColor }
+      /* `translate` and `scale`, not `transform`. Displacement here uses the
+         independent properties precisely BECAUSE framer owns transform, so a
+         harness reading transform sees nothing move and reports every card as
+         inert - which is exactly what it did the first time. */
+      return { tr: `${cs.translate}|${cs.scale}`, bg: cs.backgroundColor, br: cs.borderRightColor }
     }, [sel, child])
+    await page.mouse.move(0, 0)
+    await new Promise((r) => setTimeout(r, 700))
     const before = await read()
     const handle = await page.$(child ? `${sel} ${child}` : sel)
     if (!handle) return { moved: false, recoloured: false }
@@ -420,10 +527,15 @@ for (const [code, clan, want] of [['3184', 'Rajputana', 5], ['5027', 'Vijaya', 6
     .map((c) => `${c.querySelector('.other-clan-chip').textContent}:${getComputedStyle(c).borderTopColor}`))
   const distinctClanColours = new Set(colours.map((c) => c.split(':')[1])).size >= 2
 
-  const ok = card.moved && photo.moved && icon.recoloured && btn.moved && distinctClanColours
+  /* card.recoloured is the specificity regression: the theme block carries
+     `:root[data-theme='light'] .other-card { border-color }` at (0,3,0), so a
+     bare `.other-card:hover` at (0,2,0) never recoloured on the theme that
+     actually ships. Asserted separately from the lift so the two cannot mask
+     each other. */
+  const ok = card.moved && card.recoloured && photo.moved && icon.recoloured && btn.moved && distinctClanColours
   if (!ok) failures++
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${'hover states respond'.padEnd(38)} ` +
-    `card:${card.moved} portrait:${photo.moved} icon:${icon.recoloured} button:${btn.moved} ` +
+    `card:${card.moved}/${card.recoloured} portrait:${photo.moved} icon:${icon.recoloured} button:${btn.moved} ` +
     `perCardClanColoursIntact:${distinctClanColours}`)
 
   // reduced motion must beat the !important hover transforms
@@ -433,13 +545,13 @@ for (const [code, clan, want] of [['3184', 'Rajputana', 5], ['5027', 'Vijaya', 6
   await rm.goto(`${BASE}/r/9415/other-leads`, { waitUntil: 'networkidle2' })
   await new Promise((r) => setTimeout(r, 2000))
   const h = await rm.$('.other-card')
-  const t0 = await rm.evaluate((e) => getComputedStyle(e).transform, h)
+  const t0 = await rm.evaluate((e) => getComputedStyle(e).translate, h)
   await h.hover()
   await new Promise((r) => setTimeout(r, 700))
-  const t1 = await rm.evaluate((e) => getComputedStyle(e).transform, h)
+  const t1 = await rm.evaluate((e) => getComputedStyle(e).translate, h)
   const still = t0 === t1
   if (!still) failures++
-  console.log(`${still ? 'PASS' : 'FAIL'}  ${'reduced-motion suppresses the lift'.padEnd(38)} transform ${t0} -> ${t1}`)
+  console.log(`${still ? 'PASS' : 'FAIL'}  ${'reduced-motion suppresses the lift'.padEnd(38)} translate ${t0} -> ${t1}`)
   await rm.close()
   await page.close()
 }

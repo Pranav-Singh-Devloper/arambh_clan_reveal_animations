@@ -7,7 +7,7 @@ import { PROGRAMME } from '../data/clans'
    that goes nowhere. */
 const PROFILE_ICONS = {
   instagram: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" />
       <circle cx="12" cy="12" r="4.2" />
@@ -15,14 +15,14 @@ const PROFILE_ICONS = {
     </svg>
   ),
   linkedin: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2.5" y="2.5" width="19" height="19" rx="4" />
       <path d="M7 10.4v6.2M7 7.4v.1M11.4 16.6v-6.2M11.4 13.1c0-1.5.9-2.4 2.3-2.4s2.3.9 2.3 2.4v3.5" />
     </svg>
   ),
   email: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2.5" y="4.5" width="19" height="15" rx="2.5" />
       <path d="m3.4 6.6 7.5 5.6c.65.49 1.55.49 2.2 0l7.5-5.6" />

@@ -45,7 +45,21 @@ function tanhCurve(k, n = 1024) {
   return c
 }
 
-const MASTER_LEVEL = 0.62 // 0.85 / 1.5-slope compensation, ~-0.9dB net
+/* Measured at ctx.destination, post-waveshaper and post-limiter, across a full
+   run including the impact and the music bed:
+
+       0.62  peak -6.4 dBFS   RMS -18.6 dBFS   0 clipped samples   <- was here
+       0.85  peak -4.1 dBFS   RMS -15.9 dBFS   0 clipped samples
+       1.00  peak -3.1 dBFS   RMS -14.6 dBFS   0 clipped samples   <- now here
+
+   0.62 was throwing away 6.4 dB. That is inaudible on a laptop and very
+   audible on a phone, where the speaker is small and the system volume is
+   already at maximum - the one place this is actually going to be heard.
+   The +4 dB is uniform, so the dynamic range of the suspense against the
+   payoff is unchanged; the whole thing simply arrives at the level it was
+   always mixed for. The limiter at -2 dB is still above the peak, so it stays
+   a safety net rather than a sound. */
+const MASTER_LEVEL = 1.0
 
 /* Stereo noise, independent per channel. A shared mono buffer read from
    offset 0 made every layered noise sound comb-filter against itself and

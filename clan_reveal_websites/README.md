@@ -63,6 +63,38 @@ third party between a student and the payoff frame, and the logo one is on the
 volume gate, the very first thing anyone sees. The mails still use the GitHub
 URLs, because email has no bundler.
 
+## Output level
+
+Measured at `ctx.destination`, post-waveshaper and post-limiter, over a full
+run including the impact and the music bed:
+
+| MASTER_LEVEL | peak | RMS | clipped samples |
+|---|---|---|---|
+| 0.62 (was) | −6.4 dBFS | −18.6 dBFS | 0 |
+| 0.85 | −4.1 dBFS | −15.9 dBFS | 0 |
+| **1.00 (now)** | **−3.1 dBFS** | **−14.6 dBFS** | **0** |
+
+0.62 was throwing away 6.4 dB. Inaudible on a laptop; very audible on a phone,
+where the speaker is small and the system volume is already at maximum, which
+is the one place this is actually going to be heard. The gain is uniform, so
+the dynamic range of the suspense against the payoff is unchanged. The limiter
+at −2 dB still sits above the peak, so it stays a safety net rather than a
+sound.
+
+## Android needs no routing fix, and here is why
+
+Android routes by audio **mode**, not by session category. `MODE_NORMAL` on
+`STREAM_MUSIC` is the main loudspeaker; the earpiece only appears in
+communication mode, which Chrome enters for **microphone capture**. Verified
+under Pixel 8 / Android 14 / Chrome 126 emulation: `navigator.audioSession`
+does not exist (it is Safari-only), the iOS silent keep-alive correctly never
+fires, and audio plays normally.
+
+So the single change that would put an Android phone on the earpiece is adding
+`getUserMedia`. `deploycheck.mjs` asserts it is never called — that is the real
+Android protection, and it is a guard against a future feature, not a fix for a
+present bug.
+
 ## iOS was playing through the earpiece
 
 On an iPhone the whole reveal came out of the **receiver** - the slit above the

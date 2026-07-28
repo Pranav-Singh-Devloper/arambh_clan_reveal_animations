@@ -224,9 +224,12 @@ a { color: inherit; }
   line-height: 1.08;
 }
 
+/* Holds a single line now that the explanatory sentence is gone, so the box
+   is tightened to fit it. Left at the old padding it read as a panel with a
+   paragraph missing out of the bottom. */
 .volume-card {
   margin: 26px auto 30px;
-  padding: 20px 24px;
+  padding: 15px 24px;
   border: 1px solid var(--hairline);
   border-radius: 2px;
   background: transparent;
@@ -241,7 +244,7 @@ a { color: inherit; }
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--crimson);
-  margin-bottom: 9px;
+  margin-bottom: 0;
 }
 
 :root[data-theme='dark'] .volume-card strong { color: var(--cream); }
@@ -1076,25 +1079,32 @@ a { color: inherit; }
 /* a leader's own two profiles, sitting under the name */
 .leader-links {
   display: flex;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 12px;
+  margin-top: 16px;
 }
 
+/* Bigger and more present at REST than they were. At 30px with a hairline
+   border and muted ink these read as decoration and were easy to miss, which
+   matters now that one of the three is an email address a first-year might
+   genuinely want to use. 38px is the same disc as the footer .social-icon, so
+   the two sets of icons on the page now agree with each other. The border
+   already carries a hint of the clan colour before anything is hovered, which
+   is the "highlight" doing the work: they belong to that leader's clan even
+   at rest. */
 .leader-links a {
-  width: 30px;
-  height: 30px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  border: 1px solid var(--hairline);
+  border: 1px solid color-mix(in srgb, var(--card-clan, var(--clan)) 38%, transparent);
   color: var(--fg-muted);
-  transition: color 0.3s ease, border-color 0.3s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.leader-links a:hover {
-  color: var(--clan);
-  border-color: var(--clan);
-  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--card-clan, var(--clan)) 6%, transparent);
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    translate 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ---------- socials ---------- */
@@ -1549,35 +1559,57 @@ a { color: inherit; }
 /* ===========================================================================
    INTERACTION STATES
 
-   Two rules govern everything below, both learned the hard way on this project.
+   Three rules govern everything below, all three learned by measuring rather
+   than by looking.
 
-   The first is that this page was once rejected outright as looking cheap, and
-   the things that read as cheap in a hover are always the same: a glow, a
-   gradient that appears from nowhere, a spring, a card that leaps. So nothing
-   here moves more than 3px, nothing changes colour except toward a colour the
-   page already owns, and every curve is one of the two already in use.
+   1. NOTHING MOVES MORE THAN 3PX and nothing changes colour except toward a
+      colour the page already owns. This page was once rejected outright as
+      looking cheap, and what reads as cheap in a hover is always the same: a
+      glow, a gradient from nowhere, a spring, a card that leaps.
 
-   The second is that hover is not a thing every visitor has. Most of the
-   people opening this are on a phone, where :hover either does not fire or
-   latches on after a tap and stays. Everything visual is inside
-   @media (hover: hover), and nothing is hover-only - no information appears on
-   hover that is not already on screen.
+   2. HOVER IS NOT UNIVERSAL. Most visitors are on a phone, where :hover either
+      never fires or latches after a tap and stays latched. Everything visual
+      lives inside @media (hover: hover), nothing is hover-only, and no
+      information appears on hover that is not already on screen. Focus rings
+      sit OUTSIDE that block, because a keyboard user on a touch screen is a
+      real person.
+
+   3. DISPLACEMENT USES `translate`, NOT `transform`. Every card, portrait,
+      monogram and footer social link is a framer-motion element, and framer
+      drives its entrance by writing an INLINE transform, settling on
+      `transform: none` once it has animated in. An inline declaration
+      outranks any selector, so `transform:` in a hover rule here computes to
+      nothing at all - the cards sat completely inert while the plain elements
+      beside them responded, and it was invisible by eye. `translate` is an
+      independent property: framer never writes it, it composes ahead of
+      transform rather than fighting it, it composites identically, and it
+      needs no !important - which in turn means the reduced-motion block at
+      the bottom can switch it off with an ordinary declaration.
+
+   And one specificity trap worth naming, because it silently killed two
+   border colours. The theme block carries
+   `:root[data-theme='light'] .social-card { border-color: ... }` at (0,3,0),
+   while a bare `.social-card:hover` is (0,2,0) - so on the light theme, which
+   is the one that SHIPS, the clan-coloured border on hover never rendered at
+   all. Every card rule below is therefore written `:root .card:hover`, which
+   matches that specificity and wins on source order, in both themes, from one
+   rule.
    =========================================================================== */
 
 @media (hover: hover) and (pointer: fine) {
 
   /* --- the cards ---------------------------------------------------------
-     The lift is 3px and the shadow arrives on a pseudo-element that
-     cross-fades, rather than animating box-shadow directly. Animating a large
-     blurred shadow forces a repaint of the whole card every frame; opacity on
-     a layer that already exists is a compositor job. On a page with six of
-     these that difference is the difference between smooth and not. */
+     The shadow arrives on a pseudo-element that cross-fades rather than by
+     animating box-shadow directly: animating a large blurred shadow repaints
+     the whole card every frame, while opacity on an existing layer is a
+     compositor job. With six of these on screen that is the difference
+     between smooth and not. */
   .leader-card,
   .other-card {
-    transition:
-      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-      border-color 0.5s ease;
+    transition: translate 0.5s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.5s ease;
   }
+
+  .other-card { position: relative; }
 
   .leader-card::after,
   .other-card::after {
@@ -1590,25 +1622,14 @@ a { color: inherit; }
     box-shadow: 0 18px 44px -20px var(--photo-shadow);
   }
 
-  .other-card { position: relative; }
-
-  /* !important, and it is load-bearing rather than lazy. Every one of these
-     is a framer-motion element, and framer drives entrance animations by
-     writing an INLINE transform - it settles on `transform: none` once the
-     card has animated in. An inline declaration outranks any selector, so
-     without !important these hovers computed to nothing at all and the cards
-     sat inert while the plain, non-framer elements around them responded.
-     Overriding an inline style is the one thing !important is actually for.
-     The reduced-motion block at the end of this file is also !important and
-     comes later, so it still wins. */
-  .leader-card:hover,
-  .other-card:hover,
-  .leader-card:focus-within,
-  .other-card:focus-within {
-    transform: translateY(-3px) !important;
-    /* The other-cards each carry their OWN clan's colour on the top edge, so
-       this may only touch the other three sides. Setting `border-color` would
-       repaint all four and quietly reassign a Maratha leader to Chola blue. */
+  :root .leader-card:hover,
+  :root .other-card:hover,
+  :root .leader-card:focus-within,
+  :root .other-card:focus-within {
+    translate: 0 -3px;
+    /* Only three sides. The other-cards carry their OWN clan's colour on the
+       top edge, and the `border-color` shorthand would repaint all four and
+       quietly reassign a Maratha leader to Chola blue. */
     border-right-color: var(--card-clan, var(--clan));
     border-bottom-color: var(--card-clan, var(--clan));
     border-left-color: var(--card-clan, var(--clan));
@@ -1619,34 +1640,32 @@ a { color: inherit; }
   .leader-card:focus-within::after,
   .other-card:focus-within::after { opacity: 1; }
 
-  /* The portrait drifts up a little inside its frame while the card lifts, so
-     the subject leads the movement rather than riding it. transform only: the
-     photos carry a mask-image bottom dissolve and a drop-shadow filter, and
-     anything that touched layout or filter would fight both. The stage already
-     clips, so nothing spills. */
+  /* The portrait drifts up inside its frame while the card lifts, so the
+     subject leads the movement rather than riding it. `translate` and `scale`
+     only - never the drop-shadow filter and never the mask, either of which
+     would re-raster the whole layer every frame, and the mask is what hides
+     the bottom of the bust crop. The stage already clips, so nothing spills. */
   .leader-photo,
   .other-photo {
-    transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-    will-change: transform;
+    transition:
+      translate 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      scale 0.7s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .leader-card:hover .leader-photo,
-  .other-card:hover .other-photo { transform: translateY(-6px) scale(1.02) !important; }
+  .other-card:hover .other-photo { translate: 0 -6px; scale: 1.02; }
 
-  /* The monogram is a disc of flat clan colour, so it takes the same movement
-     but no scale - a growing circle reads as a button, which it is not. */
-  .monogram { transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+  /* The monogram is a disc of flat clan colour: it takes the movement but no
+     scale, because a growing circle reads as a button, which it is not. */
+  .monogram { transition: translate 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
   .leader-card:hover .monogram,
-  .other-card:hover .monogram { transform: translateY(-5px) !important; }
+  .other-card:hover .monogram { translate: 0 -5px; }
 
   /* --- the pointer list --------------------------------------------------
      A hairline that fills with the clan colour, left to right, on the line
-     under the cursor. It is the cheapest possible affordance and it uses the
-     rule that is already there rather than adding anything. */
-  .leader-points li {
-    position: relative;
-    transition: color 0.35s ease;
-  }
+     under the cursor. It uses the rule that is already there rather than
+     adding anything new. */
+  .leader-points li { position: relative; transition: color 0.35s ease; }
 
   .leader-points li::after {
     content: '';
@@ -1665,37 +1684,39 @@ a { color: inherit; }
   .leader-points li:hover { color: var(--fg); }
   .leader-points li:hover::after { transform: scaleX(1); }
 
-  /* --- icons and buttons -------------------------------------------------
-     The profile icons already lifted and changed colour. Filling them instead
-     makes them read as pressable rather than as decoration, which matters now
-     that one of the three is an email address someone may actually want. */
-  .leader-links a {
-    position: relative;
-    overflow: hidden;
-  }
-
+  /* --- icons and buttons ------------------------------------------------- */
   .leader-links a:hover,
   .leader-links a:focus-visible {
     color: #fff;
     background: var(--card-clan, var(--clan));
     border-color: var(--card-clan, var(--clan));
+    translate: 0 -2px;
   }
 
   .social-card {
-    transition: border-color 0.4s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    transition:
+      border-color 0.4s ease,
+      translate 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .social-card:hover { transform: translateY(-3px) !important; }
+  :root .social-card:hover {
+    translate: 0 -3px;
+    border-color: var(--clan);
+  }
+
   .social-card:hover .social-icon { color: var(--clan); border-color: var(--clan); }
   .social-icon { transition: color 0.4s ease, border-color 0.4s ease; }
 
   /* A slow sheen crossing the button, the same device the BEGIN button uses at
-     the start of the piece. Reusing it here is what ties the end of the page
-     back to the opening rather than inventing a second vocabulary. */
+     the very start of the piece. Reusing it here ties the end of the page back
+     to the opening rather than inventing a second vocabulary. */
   .other-cta-btn {
     position: relative;
     overflow: hidden;
-    transition: background 0.4s ease, color 0.4s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    transition:
+      background 0.4s ease,
+      color 0.4s ease,
+      translate 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .other-cta-btn::after {
@@ -1711,27 +1732,24 @@ a { color: inherit; }
     pointer-events: none;
   }
 
-  .other-cta-btn:hover { transform: translateY(-2px); }
+  .other-cta-btn:hover { translate: 0 -2px; }
   .other-cta-btn:hover::after { transform: translateX(360%); }
-  .other-cta-btn svg { transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
-  .other-cta-btn:hover svg { transform: translateX(3px); }
+  .other-cta-btn svg { transition: translate 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+  .other-cta-btn:hover svg { translate: 3px 0; }
   /* the back link points the other way, so its arrow should too */
-  .other-back .other-cta-btn:hover svg { transform: translateX(-3px); }
+  .other-back .other-cta-btn:hover svg { translate: -3px 0; }
 
-  .mute-btn { transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.35s ease; }
-  .mute-btn:hover { transform: scale(1.08); border-color: var(--clan); }
+  .mute-btn { transition: scale 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.35s ease; }
+  .mute-btn:hover { scale: 1.08; border-color: var(--clan); }
 
   .skip-btn { transition: color 0.3s ease, border-color 0.3s ease; }
   .skip-btn:hover { color: var(--fg); border-color: var(--fg-muted); }
 
-  .footer-logo { transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
-  .footer-logo:hover { transform: translateY(-2px); }
+  .footer-logo { transition: translate 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+  .footer-logo:hover { translate: 0 -2px; }
 }
 
-/* --- keyboard parity ------------------------------------------------------
-   Focus rings are drawn for everyone, not just mouse users, and outside the
-   @media block above - a keyboard user on a touch screen is a real person and
-   they get nothing from a hover-gated rule. */
+/* --- keyboard parity ------------------------------------------------------ */
 .leader-links a:focus-visible,
 .social-card:focus-visible,
 .other-cta-btn:focus-visible,
@@ -1744,17 +1762,23 @@ a { color: inherit; }
 
 /* --- reduced motion -------------------------------------------------------
    Colour still responds, because the affordance has to survive; only the
-   movement goes. */
+   movement goes. No !important needed anywhere, because nothing above uses it. */
 @media (prefers-reduced-motion: reduce) {
   .leader-card, .other-card, .leader-photo, .other-photo, .monogram,
-  .social-card, .other-cta-btn, .mute-btn, .footer-logo,
-  .leader-points li::after, .other-cta-btn::after {
-    transition: none !important;
-    transform: none !important;
+  .social-card, .other-cta-btn, .mute-btn, .footer-logo, .leader-links a,
+  .other-cta-btn svg {
+    transition: none;
   }
-  .leader-card:hover, .other-card:hover,
+
+  :root .leader-card:hover, :root .other-card:hover,
   .leader-card:hover .leader-photo, .other-card:hover .other-photo,
-  .social-card:hover, .other-cta-btn:hover, .mute-btn:hover, .footer-logo:hover {
-    transform: none !important;
+  .leader-card:hover .monogram, .other-card:hover .monogram,
+  :root .social-card:hover, .other-cta-btn:hover, .footer-logo:hover,
+  .leader-links a:hover, .other-cta-btn:hover svg {
+    translate: none;
+    scale: none;
   }
+
+  .mute-btn:hover { scale: none; }
+  .leader-points li:hover::after, .other-cta-btn:hover::after { transform: none; }
 }

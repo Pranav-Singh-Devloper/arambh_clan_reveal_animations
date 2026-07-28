@@ -73,8 +73,24 @@ export default function ClanLayout() {
     const h = clan.color.replace('#', '')
     const [cr, cg, cb] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16))
     r.setProperty('--clan-soft', `rgba(${cr}, ${cg}, ${cb}, 0.11)`)
-    document.title = `${clan.name} | Rishihood Clans`
   }, [clan])
+
+  /* The tab title is the one place the clan escaped before the reveal. It was
+     set the moment the code resolved, so the tab read "Chola | Rishihood
+     Clans" while the visitor was still looking at the volume gate - the whole
+     22-second build-up given away by a glance at the top of the window, and
+     the opaque route codes made pointless. It now stays neutral until the
+     clan is actually on screen.
+
+     Note this cannot be airtight: the JS bundle necessarily contains all four
+     clans and the code table, so anyone opening devtools can find their clan.
+     What matters is that nobody is spoiled by ACCIDENT, and a tab title is
+     about as accidental as it gets. */
+  useEffect(() => {
+    document.title = stage === 'revealed' && clan
+      ? `${clan.name} | Rishihood Clans`
+      : 'Your Clan Awaits | Rishihood University'
+  }, [clan, stage])
 
   // lock scrolling until the reveal has landed
   useEffect(() => {
