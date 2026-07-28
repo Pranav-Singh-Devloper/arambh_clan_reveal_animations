@@ -152,7 +152,7 @@ export const CLANS = {
         email: 'pranav.singh2024@nst.rishihood.edu.in',
         points: [
           'Selected in Haryana’s delegation to the National Youth Festival 2025, where his idea was pitched directly in front of the **Prime Minister Shri Narendra Modi**.',
-          'Represented Rishihood at the NVIDIA AI Summit in Mumbai and met **Jensen Huang**, the founder and chief executive of NVIDIA.',
+          'Represented Rishihood at the NVIDIA AI Summit in Mumbai and met **Jensen Huang**, the founder and CEO of NVIDIA.',
           '**Ex-Secretary of the Google Developer Group**, ran Neutron Hackathon, Ideathon and Visual Vortex end to end, from logistics to operations to sponsorship.',
           '**Winner of DECODE 2025** and a finalist at Mumbai Hacks; his startup raindeer.social was selected for Rishihood’s AI Venture Studio.',
           '**Two internships before second year**: SDE Intern at Profeshare AI, and now LLM Engineering Intern at Slay Health, both early-stage startups.',

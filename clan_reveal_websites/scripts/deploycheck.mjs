@@ -479,6 +479,55 @@ for (const [code, clan, want] of [['3184', 'Rajputana', 5], ['5027', 'Vijaya', 6
   await page.close()
 }
 
+/* 4d. THE BED MUST PLAY EVERY TIME.
+      It used to play only sometimes, and the condition that decided it was the
+      download still being in flight when the impact landed at 22s. Then the
+      preload's decode and startMusic's decode ran concurrently on the same
+      ArrayBuffer, the first detached it, the second threw "Cannot decode
+      detached ArrayBuffer", the catch swallowed it and the page ran on in
+      silence. Fast connection: always fine. Slow phone: sometimes dead. That
+      is why it looked random rather than broken.
+
+      Throttled hard on purpose so the race is armed, not avoided. Asserts
+      exactly ONE music source starts - two would mean the re-entrancy guard
+      has gone and the song is playing over itself. */
+{
+  const page = await browser.newPage()
+  const cdp = await page.createCDPSession()
+  await cdp.send('Network.enable')
+  await cdp.send('Network.emulateNetworkConditions',
+    { offline: false, downloadThroughput: 26 * 1024, uploadThroughput: 26 * 1024, latency: 300 })
+  const noise = []
+  page.on('console', (m) => { if (/music|detach/i.test(m.text())) noise.push(m.text()) })
+  await page.evaluateOnNewDocument(() => {
+    window.__lvl = []; window.__starts = 0; window.__decodes = 0
+    const An = AnalyserNode.prototype, o = An.getByteFrequencyData
+    An.getByteFrequencyData = function (a) {
+      o.call(this, a)
+      let s = 0; for (let k = 0; k < a.length; k++) s += a[k]
+      window.__lvl.push(Math.round(s / a.length))
+    }
+    const S = AudioBufferSourceNode.prototype, os = S.start
+    S.start = function (...a) { if (this.buffer && this.buffer.duration > 30) window.__starts++; return os.apply(this, a) }
+    const od = AudioContext.prototype.decodeAudioData
+    AudioContext.prototype.decodeAudioData = function (buf, ...r) { window.__decodes++; return od.call(this, buf, ...r) }
+  })
+  await page.goto(`${BASE}/r/9415`, { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('.begin', { timeout: 150000 })
+  await page.evaluate(() => document.querySelector('.begin').click())
+  await new Promise((r) => setTimeout(r, 55000))
+  const m = await page.evaluate(() => ({
+    audible: window.__lvl.slice(-260).filter((v) => v > 2).length,
+    starts: window.__starts, decodes: window.__decodes,
+  }))
+  const ok = m.audible > 30 && m.starts === 1
+  if (!ok) failures++
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${'bed plays with download in flight'.padEnd(38)} ` +
+    `audible ${m.audible}/260  musicStarts ${m.starts} (want 1)  decodeCalls ${m.decodes}` +
+    (noise.length ? `  ${noise.join(' | ')}` : ''))
+  await page.close()
+}
+
 /* 5. Interaction states. These are trivially easy to lose without noticing,
       because framer-motion drives entrance animations by writing an INLINE
       transform and settles on `transform: none` - which outranks any CSS
@@ -503,10 +552,27 @@ for (const [code, clan, want] of [['3184', 'Rajputana', 5], ['5027', 'Vijaya', 6
     await page.mouse.move(0, 0)
     await new Promise((r) => setTimeout(r, 700))
     const before = await read()
-    const handle = await page.$(child ? `${sel} ${child}` : sel)
-    if (!handle) return { moved: false, recoloured: false }
-    await handle.hover().catch(() => {})
-    await new Promise((r) => setTimeout(r, 800))
+    const full = child ? `${sel} ${child}` : sel
+    /* Aim at a point KNOWN to be inside the element rather than using
+       handle.hover(), which targets the centre. These cards run to 1200px tall,
+       so their centre is off-screen; Puppeteer scrolls to reach it and the
+       pointer can end up outside the box, which reported perfectly working
+       hovers as inert. Scroll it into view, then click 40px in from its own
+       top-left corner. */
+    const pt = await page.evaluate((q) => {
+      const el = document.querySelector(q)
+      if (!el) return null
+      el.scrollIntoView({ block: 'center' })
+      const r = el.getBoundingClientRect()
+      // clamp BOTH offsets to the element's own size - a fixed 40px down the
+      // page is inside a 1200px card and 2px below a 38px icon
+      return { x: Math.round(r.left + Math.min(60, r.width / 2)),
+               y: Math.round(Math.max(5, r.top) + Math.min(40, r.height / 2)) }
+    }, full)
+    if (!pt) return { moved: false, recoloured: false }
+    await new Promise((r) => setTimeout(r, 400))
+    await page.mouse.move(pt.x, pt.y)
+    await new Promise((r) => setTimeout(r, 900))
     const after = await read()
     await page.mouse.move(0, 0)
     await new Promise((r) => setTimeout(r, 500))

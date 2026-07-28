@@ -152,10 +152,12 @@ export default function ClanLayout() {
     const palette = [clan.color, '#C7A75C', '#F3EAD9', clan.color, '#8E1230']
     fireCannons(palette)
     sustainedShower(palette, 4600)
-    // The bed starts rising at +4.5s and takes 4s to reach level, so it is
-    // already coming up while the ovation (ends +5.9s) and the reveal chord
-    // (decays to +8s) are still dying away. Nothing ever hands over in silence.
-    startMusic({ ...clan.music, delay: 4.5, fade: 4 })
+    /* The bed now starts rising at +2.0s, while the confetti shower (4.6s) and
+       the ovation (5.9s) are both still going - roughly three seconds of
+       genuine overlap rather than a handover. It was +4.5s, which technically
+       overlapped the decaying tail but left an audible dip in the middle where
+       the poppers had thinned out and the music had not yet arrived. */
+    startMusic({ ...clan.music, delay: 2.0, fade: 3.5 })
     setMusicOn(true)
   }, [clan])
 

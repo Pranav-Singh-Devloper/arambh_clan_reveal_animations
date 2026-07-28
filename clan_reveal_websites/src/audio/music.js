@@ -32,11 +32,13 @@ const PEAK = 0.5 // the bed sits under the page, never on top of it
    with no AudioContext and therefore with no user gesture, while decoding
    needs a context and so cannot happen until unlock(). Keeping them apart is
    what lets the download start on page load instead of on the Begin press. */
-const bytes = new Map()   // url -> Promise<ArrayBuffer>
-const buffers = new Map() // url -> AudioBuffer
+const bytes = new Map()    // url -> Promise<ArrayBuffer>, the pristine original
+const buffers = new Map()  // url -> AudioBuffer, decoded and final
+const decoding = new Map() // url -> Promise<AudioBuffer>, in flight right now
 
 let source = null
 let bus = null
+let starting = false
 let stopped = false
 let current = null
 
@@ -50,13 +52,43 @@ function fetchBytes(url) {
   return bytes.get(url)
 }
 
+/* decodeAudioData DETACHES the ArrayBuffer it is given. Both of the lines below
+   exist because of that, and between them they were the cause of the bed
+   playing only sometimes:
+
+   1. `decoding` memoises the in-flight decode. Without it, a preload still
+      decoding when the impact lands meant startMusic() called decodeAudioData
+      a SECOND time on the same, now-detached buffer. It threw
+      "Cannot decode detached ArrayBuffer", the catch swallowed it, and the
+      page ran on in silence. It only ever happened when the download was slow
+      enough to still be in flight at 22 seconds, which is exactly why it
+      looked random: fast connection, always fine; slow phone, sometimes dead.
+
+   2. `.slice(0)` hands the decoder its own copy so the cached original is
+      never detached at all. That is what makes a failed decode RETRYABLE
+      rather than permanently poisoning the cache entry. */
 async function load(url) {
   if (buffers.has(url)) return buffers.get(url)
+  if (decoding.has(url)) return decoding.get(url)
   const ctx = A.context()
   if (!ctx) return null
-  const buf = await ctx.decodeAudioData(await fetchBytes(url))
-  buffers.set(url, buf)
-  return buf
+  const job = (async () => {
+    const raw = await fetchBytes(url)
+    const buf = await ctx.decodeAudioData(raw.slice(0))
+    buffers.set(url, buf)
+    return buf
+  })()
+  decoding.set(url, job)
+  try {
+    return await job
+  } catch (err) {
+    // drop BOTH caches so the next attempt starts clean rather than replaying
+    // a rejected promise for the rest of the visit
+    bytes.delete(url)
+    throw err
+  } finally {
+    decoding.delete(url)
+  }
 }
 
 /** Last audible sample, so trailing digital silence is never looped. */
@@ -116,10 +148,35 @@ export function preloadMusic(url) {
  */
 export async function startMusic({ src, delay = 4.5, fade = 4, bass = 0 } = {}) {
   const ctx = A.context()
-  if (!ctx || source || !src) return
+  if (!ctx || source || starting || !src) return
+  /* Claimed SYNCHRONOUSLY, before the first await. `source` is only assigned
+     after decoding, so two calls landing while a decode was in flight both saw
+     `!source`, both proceeded, and both started a source - two copies of the
+     song over each other. */
+  starting = true
   stopped = false
+  const t0 = performance.now()
   try {
-    const buf = await load(src)
+    /* The context can be suspended: iOS suspends on backgrounding and does not
+       resume unprompted, and a scheduled start into a suspended context is
+       silence with no error to catch. */
+    if (ctx.state === 'suspended') {
+      try { await ctx.resume() } catch { /* best effort */ }
+    }
+
+    /* Three attempts with a short backoff. A decode or a fetch can fail for
+       reasons that are simply transient on a phone - a dropped connection
+       mid-download, a decoder busy behind a tab switch - and the old code gave
+       up on the first one and left the page permanently silent. */
+    let buf = null
+    for (let attempt = 1; attempt <= 3 && !buf && !stopped; attempt++) {
+      try {
+        buf = await load(src)
+      } catch (err) {
+        console.warn(`[music] load attempt ${attempt} failed:`, err.message)
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 250 * attempt))
+      }
+    }
     if (!buf || stopped) return
 
     bus = A.musicIn()
@@ -149,11 +206,24 @@ export async function startMusic({ src, delay = 4.5, fade = 4, bass = 0 } = {}) 
       source.connect(bus)
     }
 
-    // re-anchor to the clock now that decoding, which takes a moment, is done
-    const at = ctx.currentTime + Math.max(0.05, delay)
+    /* Re-anchored to the clock now that decoding, which takes a moment, is
+       done. If the decode ran long the delay has already been spent waiting,
+       so it is not spent again - otherwise a slow phone gets the gap twice
+       over, once for the download and once for the timer. */
+    const spent = Math.max(0, (performance.now() - t0) / 1000)
+    const at = ctx.currentTime + Math.max(0.05, delay - spent)
     bus.gain.setValueAtTime(0.0001, at)
     bus.gain.exponentialRampToValueAtTime(PEAK, at + fade)
     source.start(at)
+
+    /* Last line of defence. Everything above can succeed and the bed can still
+       be inaudible if the context stalled, so check that it is genuinely
+       running shortly after the scheduled start and have one more go if not. */
+    setTimeout(() => {
+      if (!stopped && source && ctx.state !== 'running') {
+        ctx.resume().catch(() => {})
+      }
+    }, Math.max(300, (delay + 0.5) * 1000))
   } catch (err) {
     // A missing or undecodable file must never break the reveal - the page
     // simply stays on its procedural tail.
@@ -161,11 +231,14 @@ export async function startMusic({ src, delay = 4.5, fade = 4, bass = 0 } = {}) 
     source = null
     bus = null
     current = null
+  } finally {
+    starting = false
   }
 }
 
 export function stopMusic({ fade = 1.2 } = {}) {
   stopped = true
+  starting = false
   const ctx = A.context()
   if (!ctx || !source || !bus) return
   const t = ctx.currentTime

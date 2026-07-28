@@ -63,6 +63,40 @@ third party between a student and the payoff frame, and the logo one is on the
 volume gate, the very first thing anyone sees. The mails still use the GitHub
 URLs, because email has no bundler.
 
+## The bed used to play only sometimes
+
+`decodeAudioData` **detaches** the ArrayBuffer it is handed. Fetch and decode
+were split so the download could start on page load, and that split dropped the
+in-flight memoisation the old single-step loader had. So when the download was
+still in flight at the impact, the preload's decode and `startMusic`'s decode
+ran concurrently on the *same* ArrayBuffer: the first detached it, the second
+threw `Cannot decode detached ArrayBuffer`, the catch swallowed it, and the page
+ran on in silence.
+
+Fast connection, always fine. Slow phone, sometimes dead. Which is why it read
+as random rather than as broken.
+
+Three fixes, all in `load()` and `startMusic()`:
+
+- **`decoding` memoises the in-flight decode**, so concurrent callers share one.
+- **`raw.slice(0)`** hands the decoder its own copy, so the cached original is
+  never detached and a failed decode is retryable rather than permanently
+  poisoning the cache entry.
+- **`starting` is claimed synchronously**, before the first `await`. `source` is
+  only assigned after decoding, so two calls arriving mid-decode both saw
+  `!source`, both proceeded, and both started a source — the song over itself.
+
+Plus, because this is the one thing a visitor will notice: three load attempts
+with backoff, `ctx.resume()` if the context is suspended, a re-check shortly
+after the scheduled start, and the scheduling delay is reduced by however long
+the decode actually took, so a slow phone does not wait out the gap twice.
+
+Verified across fast / 4G / Fast 3G / Slow 3G / download-still-in-flight, on
+the full sequence, the skip path, reduced motion, and both bed sizes — every
+run plays, with exactly one music source. `deploycheck.mjs` keeps the
+download-in-flight case, throttled hard enough to arm the race rather than
+avoid it.
+
 ## The music bed is per clan
 
 | Clan | Track | Size | Bass lift |
