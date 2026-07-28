@@ -370,6 +370,11 @@ export function prepareAudio() {
   return ctx
 }
 
+function raiseMaster() {
+  if (!master || !ctx) return
+  master.gain.setTargetAtTime(muted ? 0 : MASTER_LEVEL, ctx.currentTime, 0.02)
+}
+
 /* The gesture handler. Deliberately tiny - everything expensive already
    happened in prepareAudio() on page load. */
 export function unlock() {
@@ -380,7 +385,8 @@ export function unlock() {
   /* resume() must be called from inside the gesture's own call stack, which is
      why unlock() is invoked synchronously from the click handler and not from
      any promise continuation after it. */
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+  const waking = ctx.state === 'suspended' ? ctx.resume() : null
+  if (waking) waking.catch(() => {})
 
   // then prove it, rather than assume it
   proveOutput(ctx)
@@ -393,7 +399,11 @@ export function unlock() {
     }, 350)
   }
 
-  master.gain.setTargetAtTime(muted ? 0 : MASTER_LEVEL, ctx.currentTime, 0.02)
+  raiseMaster()
+  /* On mobile resume() is async. setTargetAtTime fired while still suspended
+     can be dropped by some WebKit/Android HALs - raise again once running so
+     the master is not left at the silent prepareAudio() zero. */
+  if (waking) waking.then(raiseMaster).catch(() => {})
   // NOTE: program.gain is deliberately NOT reset here - the gasp duck is
   // scheduled ~19.5s ahead, and a second unlock() mid-show must not erase it.
   return ctx
@@ -402,6 +412,34 @@ export function unlock() {
 export const now = () => (ctx ? ctx.currentTime : 0)
 export const isReady = () => !!ctx
 export const context = () => ctx
+
+/* Run `fn` once the AudioContext clock is actually advancing.
+   Visuals use wall-clock setTimeouts; audio uses ctx.currentTime. If we start
+   both while the context is still suspended (resume() pending after Begin),
+   the timers race ahead on a frozen audio clock - on mobile that is a fixed
+   stretch of silent picture until resume finally lands. */
+export function whenRunning(fn) {
+  if (!ctx || ctx.state === 'running') {
+    fn()
+    return () => {}
+  }
+  let cancelled = false
+  let finished = false
+  const go = () => {
+    if (cancelled || finished) return
+    finished = true
+    fn()
+  }
+  const waking = ctx.resume()
+  if (waking && typeof waking.then === 'function') waking.then(go, go)
+  else go()
+  // safety: never leave the reveal on a black screen if resume hangs
+  const fallback = setTimeout(go, 1000)
+  return () => {
+    cancelled = true
+    clearTimeout(fallback)
+  }
+}
 
 /** The spectrum tap. Null until the first user gesture unlocks audio. */
 export const getAnalyser = () => analyser

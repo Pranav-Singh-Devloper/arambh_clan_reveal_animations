@@ -116,70 +116,82 @@ export default function RevealSequence({ onImpact, onComplete }) {
   const audioScheduled = useRef(false)
 
   useEffect(() => {
+    timers.current = []
     const at = (s, fn) => timers.current.push(setTimeout(fn, s * 1000))
-    const t0 = A.now()
 
-    if (!audioScheduled.current) {
-      audioScheduled.current = true
+    /* Audio rides ctx.currentTime; visuals ride setTimeout. On mobile,
+       unlock()'s resume() is still pending when this effect first runs, so the
+       audio clock is frozen while wall-clock timers are already counting -
+       the visitor watches a silent film until resume lands. Hold both until
+       the context is actually running, then take one shared t0. */
+    const cancelWait = A.whenRunning(() => {
+      const t0 = A.now()
 
-      /* ---------------- audio, scheduled up front ---------------- */
-      A.whoosh(t0)
-      A.drone(t0, T.cut)                       // the drone dies AT the cut
-      const murmur = A.crowdMurmur(t0 + 0.2, T.tap - 0.2)
+      if (!audioScheduled.current) {
+        audioScheduled.current = true
 
-      A.curtainRumble(t0 + T.stage, 1.9)
-      for (let i = 0; i < FOOTLIGHTS; i++) {
-        A.lightClunk(t0 + T.foot + i * FOOT_GAP, -0.8 + i * 0.2) // L -> R
+        /* ---------------- audio, scheduled up front ---------------- */
+        A.whoosh(t0)
+        A.drone(t0, T.cut)                       // the drone dies AT the cut
+        const murmur = A.crowdMurmur(t0 + 0.2, T.tap - 0.2)
+
+        A.curtainRumble(t0 + T.stage, 1.9)
+        for (let i = 0; i < FOOTLIGHTS; i++) {
+          A.lightClunk(t0 + T.foot + i * FOOT_GAP, -0.8 + i * 0.2) // L -> R
+        }
+        A.whoosh(t0 + T.spots, 1.2, -0.7, 0.7)   // the spot crosses the stage
+
+        A.gong(t0 + T.allotted)
+        A.hush(murmur, t0 + T.hush, 1.6)
+        A.orchestraTuning(t0 + T.tuning, 2.3)
+        A.conductorTap(t0 + T.tap, 3, 0.34)
+
+        A.drumroll(t0 + T.breath, T.cut - T.breath)
+        A.timpaniRoll(t0 + T.breath, T.cut - T.breath)
+        A.riser(t0 + T.riser, T.cut - T.riser)
+        A.countHit(t0 + T.c3, 0)
+        A.countHit(t0 + T.c2, 1)
+        A.countHit(t0 + T.c1, 2)
+
+        // THE CUT: program bus dies in 100ms; snaps back 30ms before the impact.
+        A.gaspDuck(t0 + T.cut, t0 + T.impact)
+        A.heartbeat(t0 + T.cut + 0.35, 2, 0.75)  // dry, direct - survives the duck
+        A.tremorRustle(t0 + T.curtain - 0.4)     // a hand already on the velvet
+        A.inhale(t0 + T.curtain - 0.35)          // the room breathes in
+
+        A.curtainRumble(t0 + T.curtain, 2.4)
+        A.curtainRustle(t0 + T.curtain, 2.2)
+        A.revealSwell(t0 + T.curtain, T.impact - T.curtain)
+
+        A.bigImpact(t0 + T.impact)
+        A.orchestralReveal(t0 + T.impact + 0.02)
+        A.ovation(t0 + T.impact + 0.5, 5.5)
       }
-      A.whoosh(t0 + T.spots, 1.2, -0.7, 0.7)   // the spot crosses the stage
 
-      A.gong(t0 + T.allotted)
-      A.hush(murmur, t0 + T.hush, 1.6)
-      A.orchestraTuning(t0 + T.tuning, 2.3)
-      A.conductorTap(t0 + T.tap, 3, 0.34)
+      /* ---------------- visuals ---------------- */
+      at(T.four, () => setPhase('four'))
+      at(T.one, () => setPhase('one'))
+      at(T.stage - 0.55, () => setPhase('none')) // title fully out BEFORE the house assembles
+      at(T.stage, () => setShowStage(true))
+      for (let i = 0; i < FOOTLIGHTS; i++) {
+        at(T.foot + i * FOOT_GAP, () => setLit(i + 1))
+      }
+      at(T.allotted + 0.12, () => setPhase('allotted'))  // the text rides the gong's bloom
+      at(T.allottedOut, () => setPhase('none'))
+      at(T.breath, () => setPhase('breath'))
+      at(T.c3, () => setPhase('c3'))
+      at(T.c2, () => setPhase('c2'))
+      at(T.c1, () => setPhase('c1'))
+      at(T.cut, () => { setPhase('blank'); setGasp(true) })
+      at(T.curtain, () => setCurtainOpen(true))
+      at(T.impact - 0.06, () => onImpactRef.current())
+      at(T.done, () => onCompleteRef.current())
+    })
 
-      A.drumroll(t0 + T.breath, T.cut - T.breath)
-      A.timpaniRoll(t0 + T.breath, T.cut - T.breath)
-      A.riser(t0 + T.riser, T.cut - T.riser)
-      A.countHit(t0 + T.c3, 0)
-      A.countHit(t0 + T.c2, 1)
-      A.countHit(t0 + T.c1, 2)
-
-      // THE CUT: program bus dies in 100ms; snaps back 30ms before the impact.
-      A.gaspDuck(t0 + T.cut, t0 + T.impact)
-      A.heartbeat(t0 + T.cut + 0.35, 2, 0.75)  // dry, direct - survives the duck
-      A.tremorRustle(t0 + T.curtain - 0.4)     // a hand already on the velvet
-      A.inhale(t0 + T.curtain - 0.35)          // the room breathes in
-
-      A.curtainRumble(t0 + T.curtain, 2.4)
-      A.curtainRustle(t0 + T.curtain, 2.2)
-      A.revealSwell(t0 + T.curtain, T.impact - T.curtain)
-
-      A.bigImpact(t0 + T.impact)
-      A.orchestralReveal(t0 + T.impact + 0.02)
-      A.ovation(t0 + T.impact + 0.5, 5.5)
+    return () => {
+      cancelWait()
+      timers.current.forEach(clearTimeout)
     }
-
-    /* ---------------- visuals ---------------- */
-    at(T.four, () => setPhase('four'))
-    at(T.one, () => setPhase('one'))
-    at(T.stage - 0.55, () => setPhase('none')) // title fully out BEFORE the house assembles
-    at(T.stage, () => setShowStage(true))
-    for (let i = 0; i < FOOTLIGHTS; i++) {
-      at(T.foot + i * FOOT_GAP, () => setLit(i + 1))
-    }
-    at(T.allotted + 0.12, () => setPhase('allotted'))  // the text rides the gong's bloom
-    at(T.allottedOut, () => setPhase('none'))
-    at(T.breath, () => setPhase('breath'))
-    at(T.c3, () => setPhase('c3'))
-    at(T.c2, () => setPhase('c2'))
-    at(T.c1, () => setPhase('c1'))
-    at(T.cut, () => { setPhase('blank'); setGasp(true) })
-    at(T.curtain, () => setCurtainOpen(true))
-    at(T.impact - 0.06, () => onImpactRef.current())
-    at(T.done, () => onCompleteRef.current())
-
-    return () => timers.current.forEach(clearTimeout)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
