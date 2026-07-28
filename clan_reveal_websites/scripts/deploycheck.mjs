@@ -251,13 +251,17 @@ await path('back-navigation resumes and finishes', async (p) => {
   await page.evaluate(() => document.querySelector('.begin').click())
   await new Promise((r) => setTimeout(r, 1200))
   const s = await page.evaluate(() => ({ ...JSON.parse(JSON.stringify(window.__session)), now: navigator.audioSession.type }))
+  /* latencyHint is deliberately NOT asserted, and deliberately NOT set. It was
+     briefly 'playback' here on the theory that it reinforced the media signal;
+     the WebKit research then showed latencyHint is parsed and never read, so it
+     was doing nothing for routing while adding an untested variable across
+     Android audio HALs. The iOS fix is entirely the two lines below. */
   const ok = s.now === 'playback' &&
     s.sets.some((x) => x.v === 'playback' && x.beforeCtx) &&
-    s.latencyHint === 'playback' &&
     s.audioEls === 0            // silent anchor is iOS-only, must not fire here
   if (!ok) failures++
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${'iOS audio session -> loudspeaker'.padEnd(38)} ` +
-    `type:${s.now} setBeforeAudioContext:${s.sets.some((x) => x.beforeCtx)} latencyHint:${s.latencyHint} silentAnchors:${s.audioEls}`)
+    `type:${s.now} setBeforeAudioContext:${s.sets.some((x) => x.beforeCtx)} latencyHint:${s.latencyHint} (unset by design) silentAnchors:${s.audioEls}`)
   await page.close()
 }
 
@@ -526,6 +530,64 @@ for (const [code, clan, want] of [['3184', 'Rajputana', 5], ['5027', 'Vijaya', 6
     `audible ${m.audible}/260  musicStarts ${m.starts} (want 1)  decodeCalls ${m.decodes}` +
     (noise.length ? `  ${noise.join(' | ')}` : ''))
   await page.close()
+}
+
+/* 4e. THE GESTURE HANDLER MUST STAY CHEAP.
+      Building the graph means generating a noise buffer and a convolution
+      impulse response sample by sample in JS. Done inside the Begin handler it
+      blocked for 256ms on a laptop, on the very thread the browser needs while
+      it opens the audio output stream - one of the ways an Android context
+      ends up reporting 'running' with nothing coming out. It is now built on
+      page load, silent, so the handler only has to resume and raise the gain.
+
+      Asserts three things: the graph exists before any click, NOTHING is
+      audible before the gesture, and the handler stays cheap under a 10x CPU
+      throttle. Also runs under Chrome's REAL autoplay policy - every audio
+      test here used to pass --autoplay-policy=no-user-gesture-required, which
+      meant the enforced path was never actually exercised. */
+{
+  const strict = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] })
+  const page = await strict.newPage()
+  const cdp = await page.createCDPSession()
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 10 })
+  await page.evaluateOnNewDocument(() => {
+    window.__pre = []
+    const AC = window.AudioContext
+    window.AudioContext = function (...a) { const x = new AC(...a); window.__ctx = x; window.__born = x.state; return x }
+    window.AudioContext.prototype = AC.prototype
+    const An = AnalyserNode.prototype, o = An.getByteFrequencyData
+    An.getByteFrequencyData = function (a) {
+      o.call(this, a)
+      let s = 0; for (let k = 0; k < a.length; k++) s += a[k]
+      window.__pre.push(Math.round(s / a.length))
+    }
+  })
+  await page.goto(`${BASE}/r/9415`, { waitUntil: 'networkidle2' })
+  await new Promise((r) => setTimeout(r, 3000))
+  const before = await page.evaluate(() => ({
+    built: !!window.__ctx, born: window.__born,
+    leaked: window.__pre.filter((v) => v > 1).length,
+  }))
+  const blockMs = await page.evaluate(() => {
+    const t0 = performance.now(); document.querySelector('.begin').click()
+    return Math.round(performance.now() - t0)
+  })
+  await new Promise((r) => setTimeout(r, 1000))
+  await page.evaluate(() => document.querySelector('.skip-btn')?.click())
+  await new Promise((r) => setTimeout(r, 8000))
+  const after = await page.evaluate(() => ({
+    state: window.__ctx.state,
+    audible: window.__pre.slice(-180).filter((v) => v > 2).length,
+    blocked: !!document.querySelector('.sound-blocked'),
+  }))
+  const ok = before.built && before.leaked === 0 && blockMs < 60 &&
+    after.state === 'running' && after.audible > 25 && !after.blocked
+  if (!ok) failures++
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${'audio prepared off the gesture path'.padEnd(38)} ` +
+    `graphBuiltOnLoad:${before.built} born:${before.born} leakedBeforeBegin:${before.leaked} ` +
+    `handlerBlocked:${blockMs}ms (10x CPU, want <60) audible:${after.audible}/180`)
+  await page.close()
+  await strict.close()
 }
 
 /* 5. Interaction states. These are trivially easy to lose without noticing,

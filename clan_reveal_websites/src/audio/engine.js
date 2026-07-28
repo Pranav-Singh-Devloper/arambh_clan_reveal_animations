@@ -275,7 +275,27 @@ function armRetry() {
   setTimeout(() => { if (retryArmed && audioProven) teardown() }, 30000)
 }
 
-export function unlock() {
+/* BUILD THE GRAPH BEFORE THE CLICK, NOT DURING IT.
+   ---------------------------------------------------------------------------
+   Constructing this graph is not cheap: a noise buffer and a convolution
+   impulse response are both generated sample by sample in JS. Measured inside
+   the Begin handler it blocked for 256ms on a laptop, and that is the thread
+   the browser needs while it opens the audio output stream. On a low-end
+   Android that is a stream being asked to start on a jammed main thread, which
+   is one of the ways a context ends up reporting 'running' with nothing
+   actually coming out.
+
+   So the whole graph is now built on page load with the master at ZERO. The
+   context comes up 'suspended' - that is the autoplay policy working exactly as
+   intended, and it is fine, because silence is what we want at that point
+   anyway. By the time anyone presses Begin the output stream has had the entire
+   gate-reading time to come up, and the gesture handler has only two things
+   left to do: resume, and turn the volume up.
+
+   This is the "load it muted, unmute on the click" shape, which is the correct
+   instinct - the muting just happens on a gain node rather than on a media
+   element, because this is Web Audio. */
+export function prepareAudio() {
   const declared = claimLoudspeaker()
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext
@@ -306,7 +326,8 @@ export function unlock() {
     glue.attack.value = 0.012; glue.release.value = 0.18
 
     master = ctx.createGain()
-    master.gain.value = muted ? 0 : MASTER_LEVEL
+    // silent until the gesture. Nothing may be audible before Begin.
+    master.gain.value = 0
 
     const shaper = ctx.createWaveShaper()
     shaper.curve = tanhCurve(1.5)
@@ -346,7 +367,17 @@ export function unlock() {
       if (!document.hidden && ctx && ctx.state === 'suspended') ctx.resume()
     })
   }
-  /* resume() must be called from inside the gesture's call stack, which is
+  return ctx
+}
+
+/* The gesture handler. Deliberately tiny - everything expensive already
+   happened in prepareAudio() on page load. */
+export function unlock() {
+  // belt and braces: if prepare never ran, build it now rather than fail
+  if (!ctx) prepareAudio()
+  if (!ctx) return null
+
+  /* resume() must be called from inside the gesture's own call stack, which is
      why unlock() is invoked synchronously from the click handler and not from
      any promise continuation after it. */
   if (ctx.state === 'suspended') ctx.resume().catch(() => {})

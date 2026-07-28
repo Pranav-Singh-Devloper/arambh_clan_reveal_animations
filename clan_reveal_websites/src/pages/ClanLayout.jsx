@@ -99,6 +99,15 @@ export default function ClanLayout() {
       : 'Your Clan Awaits | Rishihood University'
   }, [clan, stage])
 
+  /* Build the whole audio graph on page load, silent. It comes up suspended -
+     that is the autoplay policy doing its job - and nothing can be heard until
+     the gesture raises the master. What it buys is that the browser opens its
+     output stream during the seconds the visitor spends reading the gate,
+     rather than while the Begin handler is busy generating a noise buffer and a
+     convolution impulse response. On a slow phone that difference is a stream
+     that starts cleanly versus one that never does. */
+  useEffect(() => { A.prepareAudio() }, [])
+
   /* Start the download on page load, not on the Begin press. Fetching bytes
      needs no user gesture; only decoding does. This buys however long the
      visitor spends reading the gate and turning their volume up, which is free

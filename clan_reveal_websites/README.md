@@ -63,7 +63,31 @@ third party between a student and the payoff frame, and the logo one is on the
 volume gate, the very first thing anyone sees. The mails still use the GitHub
 URLs, because email has no bundler.
 
-## Android silence: why `ctx.state === 'running'` is not proof
+## The audio graph is built on page load, not in the click handler
+
+Building it means generating a noise buffer and a convolution impulse response
+sample by sample in JavaScript. Measured **inside** the Begin handler, that
+blocked for **256 ms** on a laptop, on precisely the thread the browser needs
+while it opens the audio output stream. On a low-end Android that is a stream
+being asked to start on a jammed main thread, which is one of the ways a
+context ends up reporting `running` with nothing coming out of it.
+
+So `prepareAudio()` now runs on mount and builds the whole graph with the
+master gain at **zero**. The context comes up `suspended` - that is the
+autoplay policy working exactly as intended, and it is fine, because silence is
+what we want at that point anyway. By the time anyone presses Begin, the output
+stream has had the entire gate-reading time to come up, and `unlock()` has only
+two things left to do: `resume()`, and raise the gain.
+
+Measured under a **10x CPU throttle**, the handler went from 256 ms to **9 ms**.
+
+This is the "load it muted, unmute on the click" shape, which was the right
+instinct - the muting just happens on a gain node rather than on a media
+element, because this is Web Audio. Asserted in `deploycheck.mjs`: the graph
+exists before any click, **nothing is audible before the gesture**, and the
+handler stays under 60 ms at 10x throttle.
+
+## Why `ctx.state === 'running'` is still not proof
 
 On some Android devices a context reports `running` while its underlying output
 stream never opened. The whole piece then plays to nobody - no effects, no
