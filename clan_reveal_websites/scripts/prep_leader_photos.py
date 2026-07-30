@@ -54,7 +54,16 @@ CROPS = {
 
     # Derived, 2.25 heads. Full-length or three-quarter sources - all of them
     # would have rendered as tiny distant figures if dropped in uncropped.
-    'nakul_jaglan.png': (0.1946, 0.2929, 0.7804, 0.6720),       # headH 892px
+    # Hand-derived, and worth explaining because the auto-derivation got this
+    # one badly wrong. The head detector sizes its search windows as a fraction
+    # of the FIGURE height, which assumes a full-body source where the head is
+    # about 19% of it. This photo is already a tight bust - head about 36% of
+    # the visible figure - so the window stopped at rel 348 while the real neck
+    # is at rel 469. It locked onto a dip at the jaw and reported a 244px head
+    # instead of 469px; the crop then cut at 2.25 x 244 and produced a floating
+    # head with the mask dissolve slicing through his chin.
+    # Widening the search to a fixed 600px band finds the true neck.
+    'nakul-2.png': (0.0000, 0.0044, 1.0000, 0.8303),               # headH 469px
     'pranav_singh.png': (0.3707, 0.2892, 0.8531, 0.6404),       # headH 486px
     'neelanshu_karan.png': (0.3000, 0.3478, 0.7050, 0.6427),    # headH 185px
     'aaryan_yadav.png': (0.1892, 0.1039, 0.8224, 0.5649),       # headH 271px, seated
@@ -144,7 +153,7 @@ def head_height(im):
 # never on screen beside Aaryan, so holding all seven to one number would be
 # stricter than the design requires and would flag mismatches nobody can see.
 CLAN_OF = {
-    'nakul_jaglan.png': 'Rajputana', 'pranav_singh.png': 'Rajputana',
+    'nakul-2.png': 'Rajputana', 'pranav_singh.png': 'Rajputana',
     'neelanshu_karan.png': 'Vijaya',
     'aaryan_yadav.png': 'Maratha', 'kushagrah.png': 'Maratha',
     'aabir_sarkar.png': 'Chola', 'deepanshu_chaudhary.png': 'Chola',

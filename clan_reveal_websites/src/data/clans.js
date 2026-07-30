@@ -41,7 +41,7 @@ import cholaCrest from '../assets/crests/chola.jpg'
 /* Leader cut-outs, normalised by scripts/prep_leader_photos.py so every
    subject occupies the same fraction of the frame - the card scales to a fixed
    height, so that ratio is the only thing controlling apparent head size. */
-import nakulPhoto from '../about_leads/images/web/nakul_jaglan.webp'
+import nakulPhoto from '../about_leads/images/web/nakul-2.webp'
 import pranavPhoto from '../about_leads/images/web/pranav_singh.webp'
 import neelanshuPhoto from '../about_leads/images/web/neelanshu_karan.webp'
 import aaryanPhoto from '../about_leads/images/web/aaryan_yadav.webp'
