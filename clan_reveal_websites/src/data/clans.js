@@ -138,7 +138,7 @@ export const CLANS = {
         linkedin: 'https://linkedin.com/in/nakuljaglan',
         email: 'nakul.2024@nst.rishihood.edu.in',
         points: [
-          '**Founder** of a **B2B AI services startup**, building a company and leading a clan in the same year.',
+          '**Founder** of a **B2B AI startup**, building a company and leading a clan in the same year.',
           'Knows Rishihood’s policies **end to end**, and is the person to ask when you cannot work out how something is meant to work.',
           'Will defend the mess menu to anyone who will listen, which is as good a reason as any to go and talk to him.',
         ],
