@@ -14,17 +14,20 @@ import LOGO from '../assets/rishihood_logo.png'
 export default function RevealPage() {
   const { clan, copy } = useOutletContext()
   const { code } = useParams()
+  /* Faculty and team get the reveal and their clan, nothing else: no leaders,
+     no socials, no other-clans link. The student cohort keeps the full page. */
+  const full = clan.audience !== 'team'
 
   return (
     <motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-      <ClanHero clan={clan} copy={copy} />
-      <Leaders clan={clan} copy={copy} />
-      <Socials clan={clan} copy={copy} />
+      <ClanHero clan={clan} copy={copy} showScroll={full} />
+      {full && <Leaders clan={clan} copy={copy} />}
+      {full && <Socials clan={clan} copy={copy} />}
 
       {/* The other three clans, one route away. Placed after the socials so it
           reads as the last thing on the page rather than as a distraction from
           the clan the visitor actually came here for. */}
-      <section className="section other-cta">
+      {full && <section className="section other-cta">
         <div className="section-inner">
           <p className="other-cta-line">Four Clans share this campus. You have met yours.</p>
           <Link className="other-cta-btn" to={`/r/${code}/other-leads`}>
@@ -35,7 +38,7 @@ export default function RevealPage() {
             </svg>
           </Link>
         </div>
-      </section>
+      </section>}
 
       <footer className="page-footer">
         {/* The war cry used to be repeated down here. It now lands once,

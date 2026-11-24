@@ -23,7 +23,7 @@ const QUINT_OUT = [0.22, 1, 0.36, 1]
 const DESKTOP =
   typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
 
-export default function ClanHero({ clan, copy }) {
+export default function ClanHero({ clan, copy, showScroll = true }) {
   const letters = clan.name.toUpperCase().split('')
 
   return (
@@ -148,7 +148,7 @@ export default function ClanHero({ clan, copy }) {
         </motion.div>
       </div>
 
-      <motion.div
+      {showScroll && <motion.div
         className="scroll-hint"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -167,7 +167,7 @@ export default function ClanHero({ clan, copy }) {
           aria-hidden="true">
           <path d="M1 1l5.5 5.5L12 1" />
         </svg>
-      </motion.div>
+      </motion.div>}
     </header>
   )
 }

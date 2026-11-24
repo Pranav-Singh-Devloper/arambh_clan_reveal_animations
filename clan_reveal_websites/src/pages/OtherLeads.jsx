@@ -1,4 +1,4 @@
-import { Link, useOutletContext, useParams } from 'react-router-dom'
+import { Link, Navigate, useOutletContext, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 import { CLANS } from '../data/clans'
@@ -32,6 +32,7 @@ const QUINT_OUT = [0.22, 1, 0.36, 1]
 export default function OtherLeads() {
   const { clan, musicOn, soundOn } = useOutletContext()
   const { code } = useParams()
+  if (clan.audience === 'team') return <Navigate to={`/r/${code}`} replace />
 
   /* resolveCode returns { code, clan: <key>, audience, ...CLANS[key] }, so the
      resolved object's own `clan` field is the CLANS key ('chola') while `name`
